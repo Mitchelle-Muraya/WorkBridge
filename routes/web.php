@@ -1,24 +1,41 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\MatcherController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\WorkerController;
+use App\Http\Controllers\ClientController;
+use App\Http\Controllers\AdminController;
 
-Route::get('/', function () {
-    return view('welcome');
+
+
+Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
+Route::post('/register', [AuthController::class, 'register']);
+
+
+// ---------- Authentication ----------
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login/worker', [AuthController::class, 'loginWorker'])->name('login.worker');
+Route::post('/login/client', [AuthController::class, 'loginClient'])->name('login.client');
+Route::post('/login/admin', [AuthController::class, 'loginAdmin'])->name('login.admin');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// ---------- Worker Dashboard ----------
+Route::middleware('auth:worker')->group(function () {
+    Route::get('/worker/dashboard', [WorkerController::class, 'dashboard'])->name('worker.dashboard');
+    Route::get('/worker/jobs', [WorkerController::class, 'recommendedJobs'])->name('worker.jobs');
+    Route::post('/worker/upload-resume', [WorkerController::class, 'uploadResume'])->name('worker.uploadResume');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
-// ✅ Public test route (no login required)
-Route::get('/match/job/{id}', [MatcherController::class, 'matchJob']);
-
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+// ---------- Client Dashboard ----------
+Route::middleware('auth:client')->group(function () {
+    Route::get('/client/dashboard', [ClientController::class, 'dashboard'])->name('client.dashboard');
+    Route::get('/client/jobs', [ClientController::class, 'postedJobs'])->name('client.jobs');
+    Route::post('/client/post-job', [ClientController::class, 'postJob'])->name('client.postJob');
 });
 
-require __DIR__.'/auth.php';
+// ---------- Admin Dashboard ----------
+Route::middleware('auth:admin')->group(function () {
+    Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/admin/workers', [AdminController::class, 'manageWorkers'])->name('admin.workers');
+    Route::get('/admin/clients', [AdminController::class, 'manageClients'])->name('admin.clients');
+});
