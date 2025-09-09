@@ -2,6 +2,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import ast
+import joblib
 
 # ==========================
 # Load processed CSVs
@@ -100,3 +101,8 @@ if __name__ == "__main__":
             break
         else:
             print("Invalid choice. Try again.")
+
+
+# Load the trained model
+model = joblib.load("job_matching_model.pkl")
+print("✅ Model loaded successfully")

@@ -73,8 +73,10 @@ def normalize_word(word):
     word = re.sub(r"(ers|er|ing|s)$", "", word)  # plumbers → plumber
     return word
 
+
+
 # ==========================
-# Prepare skill keywords
+# Prepare skill keywords (cleaner)
 # ==========================
 def get_skill_keywords(df):
     skill_col = [c for c in df.columns if "skill" in c.lower()]
@@ -82,12 +84,44 @@ def get_skill_keywords(df):
         raise ValueError("❌ No column with skills found in skills CSV.")
     all_skills = []
     for kw in df[skill_col[0]].dropna():
-        split_skills = [k.strip() for k in str(kw).split(",") if k.strip()]
+        split_skills = [k.strip().lower() for k in str(kw).split(",") if k.strip()]
         all_skills.extend(split_skills)
-    return list(set(all_skills))
 
+    # ✅ Remove duplicates + very short junk tokens
+    return [kw for kw in set(all_skills) if len(kw) > 2]
+
+
+# ==========================
+# Skill extraction with strict matching
+# ==========================
+def extract_skills(text, keywords):
+    if pd.isna(text) or not str(text).strip():
+        return []
+
+    text_clean = clean_text(text)
+    found = set()
+
+    for kw in keywords:
+        kw_norm = normalize_word(kw)
+        variants = [kw_norm]
+
+        if kw_norm in synonym_map:
+            variants.extend([normalize_word(v) for v in synonym_map[kw_norm]])
+
+        for v in variants:
+            if not v or len(v) <= 2:
+                continue  # 🚫 skip noisy short skills like "r", "io"
+
+            # ✅ Whole word match instead of substring
+            if re.search(rf"\b{re.escape(v)}\b", text_clean):
+                found.add(kw_norm)
+                break
+
+    return list(found)
 it_keywords = get_skill_keywords(it_skills_df)
 informal_keywords = get_skill_keywords(informal_skills_df)
+
+
 
 print("✅ Total IT skills loaded:", len(it_keywords))
 print("✅ Total Informal skills loaded:", len(informal_keywords))
