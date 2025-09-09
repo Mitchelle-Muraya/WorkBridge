@@ -166,6 +166,7 @@ synonym_map = {
 def extract_skills(text, keywords):
     if pd.isna(text) or not str(text).strip():
         return []
+
     text_clean = clean_text(text)
     found = set()
 
@@ -176,9 +177,11 @@ def extract_skills(text, keywords):
             variants.extend([normalize_word(v) for v in synonym_map[kw_norm]])
 
         for v in variants:
-            if v and re.search(rf"\b{re.escape(v)}\b", text_clean):
-                found.add(kw_norm)  # store normalized skill
+            if v and v in text_clean:   # ✅ substring match instead of word-boundary regex
+                found.add(kw_norm)      # store normalized version
+                break                   # no need to keep checking once matched
     return list(found)
+
 
 # ==========================
 # Extract skills for jobs
@@ -246,3 +249,7 @@ informal_jobs.to_csv("informal_jobs_with_skills.csv", index=False)
 all_workers.to_csv("workers_with_skills.csv", index=False)
 
 print("\n✅ Saved processed CSVs")
+print("\n🔍 Debugging Example")
+print("Text:", "We need an electrician for wiring a new building")
+print("Extracted:", extract_skills("We need an electrician for wiring a new building", all_keywords))
+
