@@ -19,7 +19,8 @@
             position: fixed;
             width: 100%;
             height: 100%;
-            background: url('{{ asset('images/image_1.png') }}') center/cover no-repeat;
+           background: url('/images/image_1.png') center/cover no-repeat;
+
             filter: blur(5px);
             z-index: -1;
         }

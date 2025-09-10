@@ -11,6 +11,9 @@ use App\Http\Controllers\AdminController;
 Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
 Route::post('/register', [AuthController::class, 'register']);
 
+Route::get('/login', function () {
+    return view('auth.login'); // points to resources/views/auth/login.blade.php
+});
 
 // ---------- Authentication ----------
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
