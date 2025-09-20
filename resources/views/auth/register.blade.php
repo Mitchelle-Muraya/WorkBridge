@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HireHub - Register</title>
+    <title>WorkBridge - Register</title>
     <style>
-        /* General Styles */
         html, body {
             margin: 0;
             padding: 0;
@@ -14,17 +13,15 @@
             overflow: hidden;
         }
 
-        /* Background Image */
         .background {
             position: fixed;
             width: 100%;
             height: 100%;
-            background: url("{{ asset('images/image_2.png') }}") center/cover no-repeat;
+            background: url('/images/image_2.png') center/cover no-repeat;
             filter: blur(5px);
             z-index: -1;
         }
 
-        /* Form Container */
         .form-container {
             position: absolute;
             top: 50%;
@@ -44,7 +41,7 @@
             font-size: 2rem;
         }
 
-        .form-container input, .form-container select {
+        .form-container input {
             width: 100%;
             padding: 12px;
             margin: 10px 0;
@@ -76,6 +73,34 @@
             text-decoration: none;
         }
 
+        /* Google Button */
+        .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin-top: 18px;
+            padding: 12px;
+            border-radius: 25px;
+            background: white;
+            color: #444;
+            font-size: 1rem;
+            font-weight: 500;
+            border: 1px solid #ddd;
+            text-decoration: none;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .google-btn img {
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        .google-btn:hover {
+            background: #f7f7f7;
+        }
+
         .back-button {
             position: fixed;
             top: 20px;
@@ -88,12 +113,41 @@
             border-radius: 4px;
             cursor: pointer;
             transition: 0.3s;
-            min-width: 70px;
         }
 
         .back-button:hover {
             background-color: #0056b3;
         }
+        /* Google Button */
+.google-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    background: transparent;
+    color: #007bff;
+    font-size: 1rem;
+    font-weight: bold;
+    border: 2px solid #007bff;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.google-btn:hover {
+    background: rgba(0, 123, 255, 0.1); /* faint blue hover */
+}
+
+/* Bigger Google "G" */
+.google-icon {
+    font-size: 1.6rem;
+    font-weight: bold;
+}
+
     </style>
 </head>
 <body>
@@ -101,24 +155,22 @@
 
     <div class="background"></div>
     <div class="form-container">
-        <h2>Create Account</h2>
+        <h2>Register</h2>
         <form method="POST" action="{{ route('register') }}">
             @csrf
             <input type="text" name="name" placeholder="Full Name" required>
             <input type="email" name="email" placeholder="Email" required>
             <input type="password" name="password" placeholder="Password" required>
             <input type="password" name="password_confirmation" placeholder="Confirm Password" required>
-
-            <!-- Role Selection -->
-            <select name="role" required>
-                <option value="">Select Role</option>
-                <option value="client">Client</option>
-                <option value="worker">Worker</option>
-            </select>
-
-            <button type="submit">Register</button>
+            <button type="submit">Sign Up</button>
         </form>
         <a href="{{ route('login') }}">Already have an account? Login</a>
+
+        <!-- Google Sign Up -->
+        <a href="{{ url('auth/google') }}" class="google-btn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo">
+            Continue with Google
+        </a>
     </div>
 </body>
 <script>
