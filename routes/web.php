@@ -6,25 +6,33 @@ use App\Http\Controllers\WorkerController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Auth\GoogleController;
-
 use Laravel\Socialite\Facades\Socialite;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\JobController;
+use App\Http\Controllers\LandingController;
 
-Route::get('auth/google', function () {
-    return Socialite::driver('google')->redirect();
-});
+// ---------- Landing Page ----------
+Route::get('/', [LandingController::class, 'index'])->name('landing');
 
-Route::get('auth/google/callback', function () {
-    $user = Socialite::driver('google')->user();
-    dd($user); // For testing
-});
+// ---------- Jobs ----------
+Route::get('/jobs/{id}', [JobController::class, 'show'])->name('jobs.show');
+Route::post('/jobs/{id}/apply', [JobController::class, 'apply'])->name('jobs.apply');
 
+// ---------- Registration ----------
+Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+Route::post('/register', [RegisteredUserController::class, 'store']);
 
-Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
-Route::post('/register', [AuthController::class, 'register']);
-Route::get('/', function () {
-    return view('landing');
-});
+// ---------- Login & Logout ----------
+Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [LoginController::class, 'login']);
+Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
+// ---------- Google OAuth ----------
+Route::get('auth/google', [GoogleController::class, 'redirect'])->name('google.redirect');
+Route::get('auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
+
+// ---------- Static Pages ----------
 Route::get('/about', function () {
     return view('about');
 })->name('about');
@@ -32,23 +40,6 @@ Route::get('/about', function () {
 Route::get('/contact', function () {
     return view('contact');
 })->name('contact');
-
-
-Route::get('/login', function () {
-    return view('auth.login'); // points to resources/views/auth/login.blade.php
-});
-
-
-Route::get('auth/google', [GoogleController::class, 'redirect'])->name('google.redirect');
-Route::get('auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
-
-
-// ---------- Authentication ----------
-Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-Route::post('/login/worker', [AuthController::class, 'loginWorker'])->name('login.worker');
-Route::post('/login/client', [AuthController::class, 'loginClient'])->name('login.client');
-Route::post('/login/admin', [AuthController::class, 'loginAdmin'])->name('login.admin');
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // ---------- Worker Dashboard ----------
 Route::middleware('auth:worker')->group(function () {
@@ -70,5 +61,6 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/admin/workers', [AdminController::class, 'manageWorkers'])->name('admin.workers');
     Route::get('/admin/clients', [AdminController::class, 'manageClients'])->name('admin.clients');
 });
-
-
+// Worker profile setup (after registration)
+Route::get('/worker/profile/setup', [WorkerController::class, 'setupProfile'])
+    ->name('worker.profile.setup');

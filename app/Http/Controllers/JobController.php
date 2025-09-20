@@ -2,64 +2,54 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Auth;
 use App\Models\Job;
 use Illuminate\Http\Request;
 
 class JobController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    // Landing page
+    public function landing()
     {
-        //
+        if (Auth::check()) {
+            $worker = Auth::user();
+
+            // Simple matching (later replace with ML)
+            $recommendedJobs = Job::where('title', 'LIKE', '%' . $worker->skills . '%')
+                ->orWhere('description', 'LIKE', '%' . $worker->skills . '%')
+                ->take(10)
+                ->get();
+
+            return view('landing', compact('recommendedJobs'));
+        }
+
+        $jobs = Job::latest()->take(10)->get();
+        return view('landing', compact('jobs'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    // Job details
+    public function show($id)
     {
-        //
+        $job = Job::findOrFail($id);
+
+        if (!Auth::check()) {
+            return redirect()->route('register')->with('info', 'Please sign up to apply.');
+        }
+
+        return view('jobs.show', compact('job'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    // Apply for a job
+    public function apply(Request $request, $id)
     {
-        //
-    }
+        $job = Job::findOrFail($id);
+        $worker = Auth::user();
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Job $job)
-    {
-        //
-    }
+        $job->applications()->create([
+            'worker_id' => $worker->id,
+            'cover_letter' => $request->cover_letter,
+        ]);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Job $job)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Job $job)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Job $job)
-    {
-        //
+        return back()->with('success', 'Application submitted!');
     }
 }

@@ -6,9 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 
 class Job extends Model
 {
-  public function client(){ return $this->belongsTo(User::class, 'client_id'); }
-public function hiredWorker(){ return $this->belongsTo(User::class, 'hired_worker_id'); }
-public function applications(){ return $this->hasMany(Application::class); }
-public function ratings(){ return $this->hasMany(Rating::class); }
-  //
+    protected $table = 'jobs';
+
+    protected $fillable = [
+        'client_id',
+        'title',
+        'description',
+    ];
+
+    // ✅ A job belongs to a client
+    public function client()
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    // ✅ A job can have many applications
+    public function applications()
+    {
+        return $this->hasMany(Application::class);
+    }
 }

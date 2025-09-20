@@ -1,120 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WorkBridge - Welcome</title>
-    <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WorkBridge - Welcome</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      overflow: hidden; /* Prevent scrolling */
+      color: white;
+    }
 
-        /* Slideshow background */
-        .slideshow {
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            background-size: cover;
-            background-position: center;
-            animation: slideShow 25s infinite;
-            z-index: -2;
-        }
+    /* Background slideshow */
+    .slideshow {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      animation: slideShow 25s infinite;
+      z-index: -2;
+    }
 
-        @keyframes slideShow {
-            0%   { background-image: url('/images/image_1.png'); }
-            33%  { background-image: url('/images/image_3.png'); }
-            66%  { background-image: url('/images/image_9.png'); }
-            100% { background-image: url('/images/image_7.png'); }
-        }
+    @keyframes slideShow {
+      0%   { background-image: url('/images/image_1.png'); }
+      33%  { background-image: url('/images/image_3.png'); }
+      66%  { background-image: url('/images/image_9.png'); }
+      100% { background-image: url('/images/image_7.png'); }
+    }
 
-        /* Dark overlay */
-        .overlay {
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: -1;
-        }
+    /* Overlay for readability */
+    .overlay {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: -1;
+    }
 
-        /* Navbar (top-right links) */
-        .navbar {
-            position: absolute;
-            top: 20px;
-            right: 30px;
-            z-index: 2;
-        }
+    /* Navbar */
+    .navbar {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      z-index: 2;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
 
-        .navbar a {
-            color: white;
-            margin-left: 20px;
-            text-decoration: none;
-            font-size: 1rem;
-        }
+    .navbar a {
+      color: white;
+      text-decoration: none;
+      font-size: 1rem;
+      font-weight: bold;
+      transition: 0.3s;
+    }
 
-        /* Center content */
-        .content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: white;
-            z-index: 1;
-        }
+    .navbar .btn-client {
+      padding: 8px 16px;
+      border: 2px solid white;
+      border-radius: 20px;
+      color: white;
+    }
 
-        .content h1 {
-            font-size: 3rem;
-            margin-bottom: 20px;
-        }
+    .navbar .btn-client:hover {
+      background: white;
+      color: #007bff;
+    }
 
-        .content p {
-            font-size: 1.2rem;
-            margin-bottom: 30px;
-        }
+    /* Hero Section */
+    .hero {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 1;
+      max-width: 800px;
+    }
 
-        .content a {
-    display: inline-block;
-    margin: 10px;
-    padding: 14px 28px;
-    border-radius: 30px; /* More rounded */
-    background: linear-gradient(135deg, #007bff, #0056b3); /* Gradient blue */
-    color: white;
-    text-decoration: none;
-    font-size: 1.2rem;
-    font-weight: bold;
-    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4); /* Subtle glow */
-    transition: all 0.3s ease-in-out;
-}
+    .hero h1 {
+      font-size: 2.8rem;
+      margin-bottom: 15px;
+    }
 
-.content a:hover {
-    background: linear-gradient(135deg, #0056b3, #00408a);
-    transform: scale(1.05); /* Slight grow on hover */
-    box-shadow: 0 6px 20px rgba(0, 86, 179, 0.6);
-}
+    .hero p {
+      font-size: 1.2rem;
+      margin-bottom: 25px;
+    }
 
-    </style>
+    /* Search bar */
+    .search-bar {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 35px;
+    }
+
+    .search-bar input {
+      padding: 14px;
+      width: 70%;
+      border: none;
+      border-radius: 30px 0 0 30px;
+      outline: none;
+      font-size: 1rem;
+    }
+
+    .search-bar button {
+      padding: 14px 24px;
+      background: #007bff;
+      border: none;
+      border-radius: 0 30px 30px 0;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .search-bar button:hover {
+      background: #0056b3;
+    }
+
+    /* Categories Section */
+    .categories {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 25px;
+      margin-top: 20px;
+    }
+
+    .category {
+      text-align: center;
+      transition: 0.3s;
+      color: white;
+    }
+
+    .category i {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      color: #00d1ff;
+    }
+
+    .category:hover {
+      transform: translateY(-5px);
+    }
+  </style>
 </head>
 <body>
-    <!-- Background slideshow -->
-    <div class="slideshow"></div>
-    <div class="overlay"></div>
+  <!-- Background slideshow -->
+  <div class="slideshow"></div>
+  <div class="overlay"></div>
 
-    <!-- Navbar -->
-    <div class="navbar">
-        <a href="{{ route('about') }}">About</a>
-        <a href="{{ route('contact') }}">Contact</a>
+  <!-- Navbar -->
+  <div class="navbar">
+    <a href="{{ route('about') }}">About</a>
+    <a href="{{ route('contact') }}">Contact</a>
+    <a href="{{ route('login') }}">Login</a>
+    <a href="{{ route('register') }}">Sign Up</a>
+    <a href="{{ route('register') }}" class="btn-client">Become a Client</a>
+  </div>
+
+  <!-- Hero Section -->
+  <div class="hero">
+    <h1>Welcome to WorkBridge</h1>
+    <p>Find skilled workers, connect instantly, and get tasks done with ease.</p>
+
+    <!-- Search bar -->
+    <div class="search-bar">
+      <input type="text" placeholder="What do you need help with?">
+      <button><i class="fas fa-search"></i></button>
     </div>
 
-    <!-- Main content -->
-    <div class="content">
-        <h1>Welcome to WorkBridge</h1>
-        <p>Connecting skilled workers with clients through intelligent job matching.</p>
-        <a href="{{ route('login') }}">Login</a>
-        <a href="{{ route('register') }}">Sign Up</a>
+    <!-- Categories -->
+    <div class="categories">
+      <div class="category"><i class="fas fa-hammer"></i><p>Repairs</p></div>
+      <div class="category"><i class="fas fa-broom"></i><p>Cleaning</p></div>
+      <div class="category"><i class="fas fa-truck"></i><p>Moving</p></div>
+      <div class="category"><i class="fas fa-paint-roller"></i><p>Painting</p></div>
+      <div class="category"><i class="fas fa-tools"></i><p>Installation</p></div>
+      <div class="category"><i class="fas fa-laptop-code"></i><p>Tech Support</p></div>
+      <div class="category"><i class="fas fa-utensils"></i><p>Catering</p></div>
+
     </div>
+  </div>
 </body>
 </html>
