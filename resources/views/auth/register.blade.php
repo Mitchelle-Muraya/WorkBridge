@@ -78,27 +78,27 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 10px;
             width: 100%;
-            margin-top: 18px;
+            margin-top: 15px;
             padding: 12px;
-            border-radius: 25px;
-            background: white;
-            color: #444;
+            border-radius: 8px;
+            background: transparent;
+            color: #007bff;
             font-size: 1rem;
-            font-weight: 500;
-            border: 1px solid #ddd;
+            font-weight: bold;
+            border: 2px solid #007bff;
             text-decoration: none;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
             transition: all 0.3s ease;
         }
 
         .google-btn img {
             height: 20px;
-            margin-right: 10px;
         }
 
         .google-btn:hover {
-            background: #f7f7f7;
+            background: rgba(0, 123, 255, 0.1);
         }
 
         .back-button {
@@ -118,36 +118,6 @@
         .back-button:hover {
             background-color: #0056b3;
         }
-        /* Google Button */
-.google-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    width: 100%;
-    margin-top: 15px;
-    padding: 12px;
-    border-radius: 8px;
-    background: transparent;
-    color: #007bff;
-    font-size: 1rem;
-    font-weight: bold;
-    border: 2px solid #007bff;
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.google-btn:hover {
-    background: rgba(0, 123, 255, 0.1); /* faint blue hover */
-}
-
-/* Bigger Google "G" */
-.google-icon {
-    font-size: 1.6rem;
-    font-weight: bold;
-}
-
     </style>
 </head>
 <body>
@@ -155,7 +125,8 @@
 
     <div class="background"></div>
     <div class="form-container">
-        <h2>Register</h2>
+        <h2>Create Your Account</h2>
+
         <form method="POST" action="{{ route('register') }}">
             @csrf
             <input type="text" name="name" placeholder="Full Name" required>
@@ -164,6 +135,7 @@
             <input type="password" name="password_confirmation" placeholder="Confirm Password" required>
             <button type="submit">Sign Up</button>
         </form>
+
         <a href="{{ route('login') }}">Already have an account? Login</a>
 
         <!-- Google Sign Up -->

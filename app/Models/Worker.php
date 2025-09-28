@@ -2,18 +2,19 @@
 
 namespace App\Models;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Model;
 
-class Worker extends Authenticatable
+class Worker extends Model
 {
-    use Notifiable;
-
     protected $fillable = [
-        'name', 'email', 'password',
+        'user_id',
+        'skills',
+        'experience',
+        'availability'
     ];
 
-    protected $hidden = [
-        'password',
-    ];
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

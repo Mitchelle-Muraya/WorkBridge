@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Job;
+use App\Models\Worker;
 
 class WorkerController extends Controller
 {
@@ -12,7 +13,6 @@ class WorkerController extends Controller
     public function setupProfile()
     {
         return view('worker.setup-profile');
-        // file: resources/views/worker/setup-profile.blade.php
     }
 
     // Step 2: Save profile details
@@ -23,24 +23,29 @@ class WorkerController extends Controller
             'photo' => 'nullable|image|max:2048',
         ]);
 
-        $worker = Auth::user(); // current logged-in worker
-        $worker->skills = $request->skills;
+        $user = Auth::user();
 
-        if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store('photos', 'public');
-            $worker->photo = $path;
-        }
-
-        $worker->save();
+        // Either update or create Worker profile linked to users.id
+        $worker = Worker::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'skills' => $request->skills,
+                'photo' => $request->hasFile('photo')
+                    ? $request->file('photo')->store('photos', 'public')
+                    : null,
+            ]
+        );
 
         return redirect()->route('landing')
             ->with('success', 'Profile completed! Recommended jobs are now available.');
     }
 
-    // Worker dashboard (after login)
+    // Worker dashboard
     public function dashboard()
     {
-        $worker = Auth::user();
+        $user = Auth::user();
+        $worker = Worker::where('user_id', $user->id)->first();
+
         $recommendedJobs = Job::latest()->take(6)->get(); // replace with ML later
 
         return view('worker.dashboard', compact('worker', 'recommendedJobs'));
@@ -49,10 +54,9 @@ class WorkerController extends Controller
     // Recommended jobs page
     public function recommendedJobs()
     {
-        $worker = Auth::user();
-        $recommendedJobs = Job::latest()->take(10)->get(); // stub for now
+        $recommendedJobs = Job::latest()->take(10)->get();
 
-        return view('worker.jobs', compact('worker', 'recommendedJobs'));
+        return view('worker.jobs', compact('recommendedJobs'));
     }
 
     // Resume upload
@@ -62,10 +66,14 @@ class WorkerController extends Controller
             'resume' => 'required|mimes:pdf,doc,docx|max:2048',
         ]);
 
-        $worker = Auth::user();
-        $path = $request->file('resume')->store('resumes', 'public');
-        $worker->resume = $path;
-        $worker->save();
+        $user = Auth::user();
+        $worker = Worker::where('user_id', $user->id)->first();
+
+        if ($worker) {
+            $path = $request->file('resume')->store('resumes', 'public');
+            $worker->resume = $path;
+            $worker->save();
+        }
 
         return back()->with('success', 'Resume uploaded successfully!');
     }

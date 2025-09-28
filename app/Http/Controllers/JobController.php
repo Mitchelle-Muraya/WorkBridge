@@ -5,51 +5,38 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Job;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class JobController extends Controller
 {
-    // Landing page
-    public function landing()
+     public function store(Request $request)
     {
-        if (Auth::check()) {
-            $worker = Auth::user();
-
-            // Simple matching (later replace with ML)
-            $recommendedJobs = Job::where('title', 'LIKE', '%' . $worker->skills . '%')
-                ->orWhere('description', 'LIKE', '%' . $worker->skills . '%')
-                ->take(10)
-                ->get();
-
-            return view('landing', compact('recommendedJobs'));
-        }
-
-        $jobs = Job::latest()->take(10)->get();
-        return view('landing', compact('jobs'));
-    }
-
-    // Job details
-    public function show($id)
-    {
-        $job = Job::findOrFail($id);
-
-        if (!Auth::check()) {
-            return redirect()->route('register')->with('info', 'Please sign up to apply.');
-        }
-
-        return view('jobs.show', compact('job'));
-    }
-
-    // Apply for a job
-    public function apply(Request $request, $id)
-    {
-        $job = Job::findOrFail($id);
-        $worker = Auth::user();
-
-        $job->applications()->create([
-            'worker_id' => $worker->id,
-            'cover_letter' => $request->cover_letter,
+        // 1️⃣ Validate input
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'skills' => 'nullable|string',
         ]);
 
-        return back()->with('success', 'Application submitted!');
+        // 2️⃣ Call Flask API for prediction
+        $response = Http::post('http://127.0.0.1:5000/predict_job', [
+            'description' => $validated['description'],
+        ]);
+
+        $prediction = $response->json();
+
+        // 3️⃣ Save job with predicted category
+        $job = Job::create([
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'skills' => $validated['skills'],
+            'predicted_category' => $prediction['predicted_category'], // 👈 save category
+            'confidence' => json_encode($prediction['confidence']), // optional: save full confidence levels
+        ]);
+
+        return response()->json([
+            'message' => 'Job created successfully',
+            'job' => $job
+        ]);
     }
 }

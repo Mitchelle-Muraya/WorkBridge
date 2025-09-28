@@ -9,7 +9,7 @@ return [
     */
 
     'defaults' => [
-        'guard' => 'worker',   // 👈 default to worker since you said all users start as workers
+        'guard' => 'worker',   // Default guard → you can change to 'client' if needed
         'passwords' => 'workers',
     ],
 
@@ -29,6 +29,11 @@ return [
             'driver' => 'session',
             'provider' => 'clients',
         ],
+
+        'admin' => [
+            'driver' => 'session',
+            'provider' => 'admins',
+        ],
     ],
 
     /*
@@ -46,6 +51,11 @@ return [
         'clients' => [
             'driver' => 'eloquent',
             'model' => App\Models\Client::class,
+        ],
+
+        'admins' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Admin::class,
         ],
     ],
 
@@ -65,6 +75,13 @@ return [
 
         'clients' => [
             'provider' => 'clients',
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        'admins' => [
+            'provider' => 'admins',
             'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,

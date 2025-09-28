@@ -160,19 +160,23 @@
     <a href="{{ route('contact') }}">Contact</a>
     <a href="{{ route('login') }}">Login</a>
     <a href="{{ route('register') }}">Sign Up</a>
-    <a href="{{ route('register') }}" class="btn-client">Become a Client</a>
+
   </div>
 
   <!-- Hero Section -->
   <div class="hero">
-    <h1>Welcome to WorkBridge</h1>
-    <p>Find skilled workers, connect instantly, and get tasks done with ease.</p>
+    <h1>WorkBridge connects you to jobs and talent</h1>
+    <p>Hire skilled workers or find jobs that match your skills- all in one place</p>
 
     <!-- Search bar -->
     <div class="search-bar">
-      <input type="text" placeholder="What do you need help with?">
+      <input type="text" placeholder="What do you need today?">
       <button><i class="fas fa-search"></i></button>
     </div>
+    <div class="flex justify-center gap-4 mt-6">
+
+</div>
+
 
     <!-- Categories -->
     <div class="categories">

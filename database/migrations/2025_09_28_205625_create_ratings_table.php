@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('workers', function (Blueprint $table) {
+      Schema::create('ratings', function (Blueprint $table) {
     $table->id();
-    $table->string('name');
-    $table->string('email')->unique();
-    $table->string('password');
-    $table->text('skills')->nullable(); // for recommendations later
+    $table->foreignId('job_id')->constrained('jobs')->onDelete('cascade');
+    $table->foreignId('worker_id')->constrained('workers')->onDelete('cascade');
+    $table->integer('rating');
+    $table->text('review')->nullable();
     $table->timestamps();
 });
 
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('workers');
+        Schema::dropIfExists('ratings');
     }
 };
