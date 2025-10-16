@@ -3,41 +3,42 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
 
 class RegisterController extends Controller
 {
     /**
-     * Show the registration form.
+     * Show registration form
      */
-    public function create() // 👈 renamed from showRegistrationForm to match your route
+    public function create()
     {
-        return view('auth.register'); // make sure this blade exists
+        return view('auth.register'); // no argument expected here
     }
 
     /**
-     * Handle user registration.
+     * Handle registration POST
      */
-    public function store(Request $request) // 👈 renamed from register to store
+    public function store(Request $request)
     {
-        $request->validate([
-            'name'     => 'required|string|max:191',
-            'email'    => 'required|string|email|max:191|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:6|confirmed',
         ]);
 
+        // ✅ Create user (default role = worker)
         $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-            'role'     => 'neutral', // default until they choose
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => 'worker', // default role
         ]);
 
-        Auth::login($user);
+        // ✅ Log the user in automatically
+        auth()->login($user);
 
-        return redirect()->route('choose.role');
+        return redirect()->route('worker.dashboard')->with('success', 'Welcome to WorkBridge!');
     }
 }

@@ -2,15 +2,9 @@
 
 return [
 
-    /*
-    |--------------------------------------------------------------------------
-    | Authentication Defaults
-    |--------------------------------------------------------------------------
-    */
-
     'defaults' => [
-        'guard' => 'worker',   // Default guard → you can change to 'client' if needed
-        'passwords' => 'workers',
+        'guard' => 'web',
+        'passwords' => 'users',
     ],
 
     /*
@@ -18,21 +12,16 @@ return [
     | Authentication Guards
     |--------------------------------------------------------------------------
     */
-
     'guards' => [
-        'worker' => [
+        'web' => [
             'driver' => 'session',
-            'provider' => 'workers',
+            'provider' => 'users',
         ],
 
-        'client' => [
-            'driver' => 'session',
-            'provider' => 'clients',
-        ],
-
-        'admin' => [
-            'driver' => 'session',
-            'provider' => 'admins',
+        'api' => [
+            'driver' => 'token',
+            'provider' => 'users',
+            'hash' => false,
         ],
     ],
 
@@ -41,59 +30,24 @@ return [
     | User Providers
     |--------------------------------------------------------------------------
     */
-
     'providers' => [
-        'workers' => [
+        'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Worker::class,
-        ],
-
-        'clients' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\Client::class,
-        ],
-
-        'admins' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\Admin::class,
+            'model' => App\Models\User::class,
         ],
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Resetting Passwords
+    | Password Reset Configurations
     |--------------------------------------------------------------------------
     */
-
     'passwords' => [
-        'workers' => [
-            'provider' => 'workers',
-            'table' => 'password_reset_tokens',
-            'expire' => 60,
-            'throttle' => 60,
-        ],
-
-        'clients' => [
-            'provider' => 'clients',
-            'table' => 'password_reset_tokens',
-            'expire' => 60,
-            'throttle' => 60,
-        ],
-
-        'admins' => [
-            'provider' => 'admins',
+        'users' => [
+            'provider' => 'users',
             'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],
     ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Password Confirmation Timeout
-    |--------------------------------------------------------------------------
-    */
-
-    'password_timeout' => 10800,
-
 ];

@@ -10,13 +10,14 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->string('role')->default('worker'); // Default is worker
             $table->string('name');
             $table->string('email')->unique();
             $table->string('password');
             $table->string('google_id')->nullable();
             $table->string('avatar')->nullable();
-            $table->enum('role', ['worker','client','admin'])->default('worker');
             $table->timestamps();
+
         });
     }
 

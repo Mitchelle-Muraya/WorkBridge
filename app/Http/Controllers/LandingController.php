@@ -10,15 +10,36 @@ class LandingController extends Controller
 {
     public function index()
     {
+        $message = ''; // ✅ Initialize to avoid "undefined variable" errors
+        $jobs = [];    // ✅ Initialize to handle cases with no jobs
+
+        // ✅ If user is logged in
         if (Auth::check()) {
-            // Show recommendations if logged in
-            $recommendedJobs = Job::latest()->take(6)->get();
-            // TODO: Replace with ML-based logic
-            return view('landing', compact('recommendedJobs'));
-        } else {
-            // Show latest jobs to guests
-            $jobs = Job::latest()->take(6)->get();
-            return view('landing', compact('jobs'));
+            $user = Auth::user();
+
+            if ($user->role === 'worker') {
+                $message = "Welcome back, {$user->name}! Here are jobs matching your skills 👷‍♀️";
+                $jobs = Job::where('status', 'open')
+                    ->latest()
+                    ->take(6)
+                    ->get();
+            } elseif ($user->role === 'client') {
+                $message = "Welcome back, {$user->name}! Ready to hire today? 👩‍💼";
+                $jobs = Job::where('user_id', $user->id)
+                    ->latest()
+                    ->get();
+            } elseif ($user->role === 'admin') {
+                $message = "Hello Admin, {$user->name}! Manage your platform here.";
+                $jobs = []; // Admin can view system metrics instead
+            }
         }
+        // ✅ If no one is logged in
+        else {
+            $message = "Hire skilled workers or find jobs that match your skills — all in one place.";
+            $jobs = Job::latest()->take(6)->get();
+        }
+
+        // ✅ Return view safely with defined variables
+        return view('landing', compact('jobs', 'message'));
     }
 }

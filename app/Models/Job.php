@@ -25,4 +25,9 @@ class Job extends Model
     {
         return $this->hasMany(Application::class);
     }
+    public function reviews()
+{
+    return $this->hasMany(\App\Models\Review::class);
+}
+
 }

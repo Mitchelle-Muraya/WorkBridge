@@ -8,48 +8,59 @@ use Illuminate\Support\Facades\Auth;
 
 class LoginController extends Controller
 {
+    /**
+     * Show login form
+     */
     public function showLoginForm()
     {
         return view('auth.login');
     }
 
+    /**
+     * Handle login request
+     */
     public function login(Request $request)
     {
+        // Validate input
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credentials, $request->remember)) {
+        // Attempt login using default guard (web)
+        if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
             $user = Auth::user();
 
-            // Redirect based on role
-            if ($user->role === 'worker') {
-                return redirect()->route('worker.dashboard');
-            } elseif ($user->role === 'client') {
-                return redirect()->route('client.dashboard');
-            } elseif ($user->role === 'admin') {
-                return redirect()->route('admin.dashboard');
+            // Redirect based on user role
+            switch ($user->role) {
+                case 'worker':
+                    return redirect()->route('worker.dashboard')->with('success', 'Welcome back, Worker!');
+                case 'client':
+                    return redirect()->route('client.dashboard')->with('success', 'Welcome back, Client!');
+                case 'admin':
+                    return redirect()->route('admin.dashboard')->with('success', 'Welcome Admin!');
+                default:
+                    return redirect('/')->with('info', 'Welcome back!');
             }
-
-            // Default fallback
-            return redirect()->route('landing');
         }
 
+        // If login fails
         return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
-        ]);
+            'email' => 'Invalid email or password.',
+        ])->onlyInput('email');
     }
 
+    /**
+     * Handle logout
+     */
     public function logout(Request $request)
     {
         Auth::logout();
-
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect('/login')->with('status', 'You have been logged out.');
     }
 }

@@ -2,59 +2,53 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Models\Worker;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
     /**
-     * Display the user's profile form.
+     * Show onboarding form
      */
-    public function edit(Request $request): View
+    public function showOnboarding()
     {
-        return view('profile.edit', [
-            'user' => $request->user(),
-        ]);
+        return view('onboarding.setup');
     }
 
     /**
-     * Update the user's profile information.
+     * Handle profile submission and mark completion
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
+    public function store(Request $request)
     {
-        $request->user()->fill($request->validated());
+        $user = auth()->user();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
-        }
-
-        $request->user()->save();
-
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
-    }
-
-    /**
-     * Delete the user's account.
-     */
-    public function destroy(Request $request): RedirectResponse
-    {
-        $request->validateWithBag('userDeletion', [
-            'password' => ['required', 'current_password'],
+        // Validate input
+        $request->validate([
+            'phone' => 'required|string|max:15',
+            'location' => 'required|string|max:255',
+            'skills' => 'nullable|string|max:255',
+            'experience' => 'nullable|string|max:255',
+            'resume' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
+            'photo' => 'nullable|image|mimes:jpg,png,jpeg|max:2048',
         ]);
 
-        $user = $request->user();
+        // Store or update worker profile
+        Worker::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'skills' => $request->skills,
+                'experience' => $request->experience,
+            ]
+        );
 
-        Auth::logout();
+        // ✅ Mark profile as complete
+        $user->is_profile_complete = true;
+        $user->save();
 
-        $user->delete();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return Redirect::to('/');
+        // ✅ Redirect to landing page
+        return redirect()
+            ->route('landing')
+            ->with('success', '🎉 Profile setup complete! You can now apply for jobs.');
     }
 }

@@ -13,6 +13,10 @@ class Application extends Model
         'job_id',
         'applied_at',
     ];
+public function user()
+{
+    return $this->belongsTo(User::class, 'user_id');
+}
 
     // ✅ An application belongs to a worker
     public function worker()

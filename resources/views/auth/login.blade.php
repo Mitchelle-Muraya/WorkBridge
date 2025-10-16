@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WorkBridge - Login</title>
     <style>
-        /* General Styles */
         html, body {
             margin: 0;
             padding: 0;
@@ -14,7 +13,6 @@
             overflow: hidden;
         }
 
-        /* Background Image */
         .background {
             position: fixed;
             width: 100%;
@@ -24,7 +22,6 @@
             z-index: -1;
         }
 
-        /* Form Container */
         .form-container {
             position: absolute;
             top: 50%;
@@ -92,35 +89,34 @@
             color: #0099dd;
         }
 
-        /* Google Button */
         .google-btn {
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 10px;
             width: 100%;
             margin-top: 18px;
             padding: 12px;
-            border-radius: 25px;
-            background: white;
-            color: #444;
+            border-radius: 8px;
+            background: transparent;
+            color: #007bff;
             font-size: 1rem;
-            font-weight: 500;
-            border: 1px solid #ddd;
+            font-weight: bold;
+            border: 2px solid #007bff;
             text-decoration: none;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
             transition: all 0.3s ease;
         }
 
-        .google-btn img {
-            height: 20px;
-            margin-right: 10px;
-        }
-
         .google-btn:hover {
-            background: #f7f7f7;
+            background: rgba(0, 123, 255, 0.1);
         }
 
-        /* Back Button */
+        .google-icon {
+            font-size: 1.6rem;
+            font-weight: bold;
+        }
+
         .back-button {
             position: fixed;
             top: 20px;
@@ -138,36 +134,6 @@
         .back-button:hover {
             background: rgba(0, 86, 179, 0.9);
         }
-        /* Google Button */
-.google-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    width: 100%;
-    margin-top: 15px;
-    padding: 12px;
-    border-radius: 8px;
-    background: transparent;
-    color: #007bff;
-    font-size: 1rem;
-    font-weight: bold;
-    border: 2px solid #007bff;
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.google-btn:hover {
-    background: rgba(0, 123, 255, 0.1); /* faint blue hover */
-}
-
-/* Bigger Google "G" */
-.google-icon {
-    font-size: 1.6rem;
-    font-weight: bold;
-}
-
     </style>
 </head>
 <body>
@@ -177,24 +143,78 @@
     <div class="form-container">
         <h1>WorkBridge</h1>
         <h2>Login</h2>
+
+        <!-- Laravel Default Login -->
         <form method="POST" action="{{ route('login') }}">
             @csrf
             <input type="email" name="email" placeholder="Email" required>
             <input type="password" name="password" placeholder="Password" required>
             <button type="submit">Login</button>
         </form>
+
         <a href="{{ route('register') }}">Don’t have an account? <strong>Sign up</strong></a>
 
-        <!-- Google Login -->
-        <a href="{{ url('auth/google') }}" class="google-btn">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo">
-            Continue with Google
-        </a>
+        <!-- Google Login Button -->
+        <button type="button" onclick="googleLogin()" class="google-btn">
+            <span class="google-icon">G</span>
+            Sign in with Google
+        </button>
     </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWMPQnoJ0NtdkZAEAXWX6lQGIM-htT5ys",
+            authDomain: "workbridge-4bc7d.firebaseapp.com",
+            projectId: "workbridge-4bc7d",
+            storageBucket: "workbridge-4bc7d.firebasestorage.app",
+            messagingSenderId: "183529435827",
+            appId: "1:183529435827:web:13b37dddda662db5dfb6c6",
+            measurementId: "G-VPWSKRY137"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Handle Google Sign-In
+        function googleLogin() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+
+            firebase.auth().signInWithPopup(provider)
+                .then(result => result.user.getIdToken())
+                .then(token => {
+                    // Send token to Laravel backend
+                    fetch('/firebase/verify', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({ token })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.user) {
+                            window.location.href = '/dashboard';
+                        } else {
+                            alert('Login failed. Please try again.');
+                        }
+                    })
+                    .catch(err => alert('Server error: ' + err.message));
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert('Google Sign-In failed: ' + error.message);
+                });
+        }
+
+        // Back button
+        function goBack() {
+            window.history.back();
+        }
+    </script>
 </body>
-<script>
-    function goBack() {
-        window.history.back();
-    }
-</script>
 </html>

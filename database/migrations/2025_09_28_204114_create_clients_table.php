@@ -9,13 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('clients', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-    $table->string('company')->nullable();
-    $table->string('photo')->nullable();
-    $table->timestamps();
-});
-
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('company')->nullable();
+            $table->string('photo')->nullable();
+            $table->timestamps();
+        });
     }
 
     public function down(): void

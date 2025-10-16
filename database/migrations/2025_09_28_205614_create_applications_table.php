@@ -16,6 +16,9 @@ return new class extends Migration
     $table->foreignId('job_id')->constrained('jobs')->onDelete('cascade');
     $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
     $table->timestamps();
+    Schema::table('applications', function (Blueprint $table) {
+        $table->string('status')->default('pending');
+    });
 });
 
 
@@ -27,5 +30,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('applications');
+        Schema::table('applications', function (Blueprint $table) {
+        $table->dropColumn('status');
+    });
     }
+
+
+
 };

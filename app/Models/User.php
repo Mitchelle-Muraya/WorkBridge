@@ -4,18 +4,19 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends Authenticatable
 {
-    use Notifiable;
+    use HasFactory, Notifiable;
+
+    protected $table = 'users';
 
     protected $fillable = [
         'name',
         'email',
         'password',
-        'avatar',
-        'role',       // 'client' or 'worker'
-        'google_id'
+        'role',
     ];
 
     protected $hidden = [
@@ -23,19 +24,27 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    /**
-     * Relationships
-     */
+    // ✅ Relationships
+    public function worker()
+    {
+        return $this->hasOne(Worker::class);
+    }
 
-    // A user can have one client profile (if they choose client role)
-    public function clientProfile()
+    public function client()
     {
         return $this->hasOne(Client::class);
     }
 
-    // A user can have one worker profile (if they choose worker role)
-    public function workerProfile()
+    // ✅ New relationship
+    public function applications()
     {
-        return $this->hasOne(Worker::class);
+        return $this->hasMany(\App\Models\Application::class, 'user_id');
     }
+
+    public function reviews()
+{
+    return $this->hasMany(\App\Models\Review::class, 'worker_id');
 }
+
+}
+
