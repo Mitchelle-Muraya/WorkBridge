@@ -1,21 +1,26 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\LandingController;
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\GoogleController;
-use App\Http\Controllers\FirebaseAuthController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\JobController;
-use App\Http\Controllers\ReviewController;
-use App\Http\Controllers\AdminController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\{
+    LandingController,
+    Auth\LoginController,
+    Auth\RegisterController,
+    GoogleController,
+    FirebaseAuthController,
+    DashboardController,
+    JobController,
+    ReviewController,
+    AdminController,
+    ProfileController,
+    UserController
+};
 use App\Http\Middleware\RoleMiddleware;
-use App\Models\Job;
 
-// ✅ Middleware Alias
+/*
+|--------------------------------------------------------------------------
+| 🧩 Middleware Alias
+|--------------------------------------------------------------------------
+*/
 app('router')->aliasMiddleware('role', RoleMiddleware::class);
 
 /*
@@ -24,7 +29,7 @@ app('router')->aliasMiddleware('role', RoleMiddleware::class);
 |--------------------------------------------------------------------------
 */
 
-// Landing Page (Homepage)
+// Landing Page
 Route::get('/', [LandingController::class, 'index'])->name('landing');
 
 // Static pages
@@ -56,19 +61,20 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 | 💼 Job Browsing & Application
 |--------------------------------------------------------------------------
 */
-
-// Publicly visible jobs (homepage)
-Route::get('/', [LandingController::class, 'index'])->name('landing');
-
-// Apply for job (authenticated users only)
 Route::middleware('auth')->group(function () {
     Route::get('/apply/{id}', [JobController::class, 'apply'])->name('jobs.apply');
+    Route::get('/switch-mode', [UserController::class, 'switchMode'])->name('switch.mode');
 });
 
-// Role switching (Worker ↔ Client)
-Route::get('/switch-mode', [UserController::class, 'switchMode'])
-    ->middleware('auth')
-    ->name('switch.mode');
+/*
+|--------------------------------------------------------------------------
+| 🧍 Onboarding (Profile Setup)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
+    Route::get('/onboarding', [ProfileController::class, 'showOnboarding'])->name('profile.onboarding');
+    Route::post('/onboarding', [ProfileController::class, 'store'])->name('profile.store');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -76,25 +82,23 @@ Route::get('/switch-mode', [UserController::class, 'switchMode'])
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
-
     // 👷 Worker Dashboard
-    Route::get('/dashboard/worker', [DashboardController::class, 'workerDashboard'])->name('worker.dashboard');
+    Route::get('/dashboard/worker', [DashboardController::class, 'workerDashboard'])
+        ->name('worker.dashboard');
 
     // 🧑‍💼 Client Dashboard
-    Route::get('/dashboard/client', [DashboardController::class, 'clientDashboard'])->name('client.dashboard');
+    Route::get('/dashboard/client', [DashboardController::class, 'clientDashboard'])
+        ->name('client.dashboard');
+
+    // 📝 Job management (Client)
     Route::post('/dashboard/client/post-job', [DashboardController::class, 'postJob'])->name('client.postJob');
     Route::get('/dashboard/client/applicants/{job}', [DashboardController::class, 'viewApplicants'])->name('client.applicants');
     Route::delete('/dashboard/client/delete-job/{job}', [DashboardController::class, 'deleteJob'])->name('client.deleteJob');
     Route::post('/client/rate/{application}', [DashboardController::class, 'rateWorker'])->name('client.rateWorker');
 
-    // ✅ Onboarding
-    Route::get('/onboarding', [ProfileController::class, 'showOnboarding'])->name('profile.onboarding');
-    Route::post('/onboarding', [ProfileController::class, 'store'])->name('profile.store');
-
-    // 🔄 Auto redirect after login
+    // 🔄 Auto Redirect After Login
     Route::get('/dashboard', function () {
         $user = auth()->user();
-
         return match ($user->role) {
             'worker' => redirect()->route('worker.dashboard'),
             'client' => redirect()->route('client.dashboard'),
@@ -109,8 +113,20 @@ Route::middleware(['auth'])->group(function () {
 | 📨 Applications
 |--------------------------------------------------------------------------
 */
-Route::post('/applications/{application}/accept', [DashboardController::class, 'acceptApplication'])->name('applications.accept');
-Route::post('/applications/{application}/reject', [DashboardController::class, 'rejectApplication'])->name('applications.reject');
+Route::middleware(['auth'])->group(function () {
+    Route::post('/applications/{application}/accept', [DashboardController::class, 'acceptApplication'])->name('applications.accept');
+    Route::post('/applications/{application}/reject', [DashboardController::class, 'rejectApplication'])->name('applications.reject');
+});
+
+/*
+|--------------------------------------------------------------------------
+| 💬 Reviews
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
+    Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews.index');
+    Route::post('/reviews/store', [ReviewController::class, 'store'])->name('reviews.store');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -122,8 +138,3 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/workers', [AdminController::class, 'manageWorkers'])->name('admin.workers');
     Route::get('/admin/clients', [AdminController::class, 'manageClients'])->name('admin.clients');
 });
-Route::middleware(['auth', 'profile.complete'])->group(function () {
-    Route::get('/onboarding', [ProfileController::class, 'showOnboarding'])->name('profile.onboarding');
-    Route::post('/onboarding', [ProfileController::class, 'store'])->name('profile.store');
-});
-

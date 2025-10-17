@@ -8,17 +8,16 @@ use Illuminate\Support\Facades\Auth;
 
 class ProfileController extends Controller
 {
-    /**
-     * Show onboarding form
-     */
     public function showOnboarding()
     {
+        // If user already finished onboarding, skip it
+        if (Auth::user()->profile_status === 'complete') {
+            return redirect()->route('worker.dashboard');
+        }
+
         return view('onboarding.setup');
     }
 
-    /**
-     * Handle profile submission and mark completion
-     */
     public function store(Request $request)
     {
         $user = auth()->user();
@@ -33,22 +32,21 @@ class ProfileController extends Controller
             'photo' => 'nullable|image|mimes:jpg,png,jpeg|max:2048',
         ]);
 
-        // Store or update worker profile
+        // ✅ Create or update worker profile
         Worker::updateOrCreate(
             ['user_id' => $user->id],
             [
                 'skills' => $request->skills,
                 'experience' => $request->experience,
+                'photo' => $request->photo ? $request->file('photo')->store('photos', 'public') : null,
+                'resume' => $request->resume ? $request->file('resume')->store('resumes', 'public') : null,
             ]
         );
 
-        // ✅ Mark profile as complete
-        $user->is_profile_complete = true;
-        $user->save();
+        // ✅ Mark user as complete
+        $user->update(['profile_status' => 'complete']);
 
-        // ✅ Redirect to landing page
-        return redirect()
-            ->route('landing')
-            ->with('success', '🎉 Profile setup complete! You can now apply for jobs.');
+        // Redirect to landing with message
+        return redirect()->route('landing')->with('success', '🎉 Profile setup complete! You can now browse and apply for jobs.');
     }
 }

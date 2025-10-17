@@ -44,6 +44,10 @@ class DashboardController extends Controller
 
     public function workerDashboard()
     {
+        if (auth()->user()->profile_status !== 'complete') {
+    return redirect()->route('profile.onboarding')->with('info', 'Please complete your profile first.');
+}
+
         $user = auth()->user();
     $worker = \App\Models\Worker::where('user_id', $user->id)->first();
 

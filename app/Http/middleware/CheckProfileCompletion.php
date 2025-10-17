@@ -11,12 +11,12 @@ class CheckProfileCompletion
     {
         $user = auth()->user();
 
-        // ✅ Allow onboarding page to be seen by users who are not complete
+        // Don’t interfere with onboarding itself
         if ($request->is('onboarding*')) {
             return $next($request);
         }
 
-        // ✅ If the user is not complete, redirect to onboarding
+        // If user profile is incomplete, redirect to onboarding
         if ($user && !$user->is_profile_complete) {
             return redirect()->route('profile.onboarding');
         }
