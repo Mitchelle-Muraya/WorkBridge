@@ -10,13 +10,17 @@ return new class extends Migration
 {
     Schema::create('jobs', function (Blueprint $table) {
         $table->id();
-        $table->foreignId('user_id')->constrained('users')->onDelete('cascade'); // 👈 This line
+        $table->unsignedBigInteger('client_id');
         $table->string('title');
         $table->text('description');
+        $table->string('skills_required');
         $table->string('location');
         $table->decimal('budget', 10, 2)->nullable();
-        $table->enum('status', ['open', 'in_progress', 'completed'])->default('open');
+        $table->enum('status', ['pending', 'in_progress', 'completed'])->default('pending');
         $table->timestamps();
+        // foreign key to users table
+        $table->foreign('client_id')->references('id')->on('users')->onDelete('cascade');
+
     });
 }
 

@@ -14,6 +14,8 @@ return new class extends Migration
             $table->string('skills')->nullable();
             $table->string('photo')->nullable();
             $table->string('resume')->nullable();
+            $table->string('phone')->nullable();
+        $table->string('location')->nullable();
             $table->timestamps();
         });
     }
@@ -21,5 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('workers');
+         Schema::table('workers', function (Blueprint $table) {
+        $table->dropColumn(['phone', 'location']);
+    });
     }
 };

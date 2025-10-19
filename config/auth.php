@@ -17,7 +17,11 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
-
+// ✅ fallback guard to silence stale references
+    'worker' => [
+        'driver' => 'session',
+        'provider' => 'users',
+    ],
         'api' => [
             'driver' => 'token',
             'provider' => 'users',

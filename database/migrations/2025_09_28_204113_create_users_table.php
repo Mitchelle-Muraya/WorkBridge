@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->string('password');
+            $table->string('profile_status')->default('incomplete');
             $table->string('google_id')->nullable();
             $table->string('avatar')->nullable();
             $table->timestamps();
@@ -24,5 +25,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('users');
+        Schema::table('users', function (Blueprint $table) {
+        $table->dropColumn('profile_status');
+    });
     }
 };

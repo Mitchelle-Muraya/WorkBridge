@@ -2,32 +2,34 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Job extends Model
 {
-    protected $table = 'jobs';
+    use HasFactory;
 
     protected $fillable = [
-        'client_id',
-        'title',
-        'description',
-    ];
+    'title',
+    'description',
+    'category',
+    'budget',
+    'deadline',
+    'status',
+    'client_id',
+    'skills_required',
+    'location',
+];
 
-    // ✅ A job belongs to a client
+
+
     public function client()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(User::class, 'client_id');
     }
 
-    // ✅ A job can have many applications
     public function applications()
     {
         return $this->hasMany(Application::class);
     }
-    public function reviews()
-{
-    return $this->hasMany(\App\Models\Review::class);
-}
-
 }

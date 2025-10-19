@@ -4,49 +4,100 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Job;
-use App\Models\Client;
 use Illuminate\Support\Facades\Auth;
 
 class ClientController extends Controller
 {
-    public function dashboard()
-    {
-        $user = Auth::user();
-        $client = Client::where('user_id', $user->id)->first();
+    // CLIENT DASHBOARD
+    public function index()
+{
+    $clientId = Auth::id();
 
-        return view('client.dashboard', compact('client'));
+    $totalJobs = Job::where('client_id', $clientId)->count();
+    $jobsInProgress = Job::where('client_id', $clientId)->where('status', 'in_progress')->count();
+    $completedJobs = Job::where('client_id', $clientId)->where('status', 'completed')->count();
+
+    // 👇 Fetch all applications for jobs posted by this client
+    $applications = \App\Models\Application::whereHas('job', function ($query) use ($clientId) {
+        $query->where('client_id', $clientId);
+    })
+    ->with(['user', 'job'])
+    ->orderBy('created_at', 'desc')
+    ->get();
+
+    return view('dashboard.client', compact('totalJobs', 'jobsInProgress', 'completedJobs', 'applications'));
+}
+
+
+    // POST JOB PAGE
+    public function createJob()
+    {
+        return view('client.post-job');
     }
 
-    public function postedJobs()
+    // STORE JOB
+    public function storeJob(Request $request)
+{
+    // validate data
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'required|string',
+        'category' => 'required|string|max:255',
+        'budget' => 'required|numeric',
+        'deadline' => 'required|date',
+    ]);
+
+    // get logged in client
+    $clientId = Auth::id();
+
+    // create job
+    $job = new Job();
+    $job->title = $request->title;
+    $job->description = $request->description;
+    $job->category = $request->category;
+    $job->budget = $request->budget;
+    $job->deadline = $request->deadline;
+    $job->client_id = $clientId;
+    $job->status = 'pending'; // default status
+    $skills = $request->skills_required ?? [];
+if (!empty($request->other_skill)) {
+    $skills[] = $request->other_skill;
+}
+$job->skills_required = implode(', ', $skills);
+
+$job->location = $request->location;
+
+
+    $job->save();
+
+    return redirect()->back()->with('success', 'Job posted successfully!');
+}
+
+
+    // MY JOBS PAGE
+    public function myJobs()
     {
-        $user = Auth::user();
-        $client = Client::where('user_id', $user->id)->first();
-
-        $jobs = $client ? Job::where('client_id', $client->id)->get() : [];
-
-        return view('client.jobs', compact('jobs'));
+        $jobs = Job::where('client_id', Auth::id())->latest()->get();
+        return view('client.my-jobs', compact('jobs'));
     }
 
-    public function postJob(Request $request)
-    {
-        $request->validate([
-            'title' => 'required',
-            'description' => 'required',
-            'skills' => 'required'
-        ]);
+    // MESSAGES & REVIEWS (placeholders)
+    public function messages() { return view('client.messages'); }
+    public function reviews() { return view('client.reviews'); }
 
-        $user = Auth::user();
-        $client = Client::where('user_id', $user->id)->first();
+public function viewApplications()
+{
+    $clientId = Auth::id();
 
-        if ($client) {
-            $job = new Job();
-            $job->client_id = $client->id;
-            $job->title = $request->title;
-            $job->description = $request->description;
-            $job->extracted_skills = $request->skills;
-            $job->save();
-        }
+    // Fetch all applications for the jobs posted by this client
+    $applications = \App\Models\Application::whereHas('job', function ($query) use ($clientId) {
+        $query->where('client_id', $clientId);
+    })
+    ->with(['user', 'job'])
+    ->orderBy('created_at', 'desc')
+    ->get();
 
-        return back()->with('success', 'Job posted successfully!');
-    }
+    return view('client.applications', compact('applications'));
+}
+
 }

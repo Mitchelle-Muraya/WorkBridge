@@ -2,31 +2,28 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Application extends Model
 {
-    protected $table = 'applications';
+    use HasFactory;
 
     protected $fillable = [
-        'worker_id',
+        'user_id',
         'job_id',
-        'applied_at',
+        'status',
     ];
-public function user()
-{
-    return $this->belongsTo(User::class, 'user_id');
-}
 
-    // ✅ An application belongs to a worker
-    public function worker()
+    // 🔹 Relationship to the worker (user)
+    public function user()
     {
-        return $this->belongsTo(Worker::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-    // ✅ An application belongs to a job
+    // 🔹 Relationship to the job
     public function job()
     {
-        return $this->belongsTo(Job::class);
+        return $this->belongsTo(Job::class, 'job_id');
     }
 }

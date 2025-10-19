@@ -3,78 +3,102 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Job;
-use App\Models\Worker;
+use App\Models\Application;
+use Illuminate\Support\Facades\Auth;
 
 class WorkerController extends Controller
 {
-    // Step 1: Show profile setup form
-    public function setupProfile()
+    /**
+     * Display the Worker Dashboard
+     */
+    public function index(Request $request)
     {
-        return view('worker.setup-profile');
+        $query = $request->input('query');
+        $worker = Auth::user();
+
+        // ✅ Determine if profile is incomplete (automatic check)
+      $profileIncomplete = $worker->profile_status !== 'complete';
+
+
+        // ✅ Fetch all open jobs (search supported)
+        $jobs = Job::where('status', 'pending')
+            ->when($query, function ($q) use ($query) {
+                $q->where('title', 'like', "%$query%")
+                  ->orWhere('category', 'like', "%$query%")
+                  ->orWhere('location', 'like', "%$query%");
+            })
+            ->latest()
+            ->get();
+
+        // ✅ Fetch worker's applications with job relationship
+        $applications = Application::where('user_id', $worker->id)
+            ->with('job')
+            ->get();
+
+        // ✅ (NEW) Recommended Jobs — placeholder for ML logic
+        // For now, it fetches jobs in same category or location as the worker (mocked logic)
+        $recommendedJobs = Job::where('status', 'open')
+            ->when($worker->skills, function ($q) use ($worker) {
+                $q->where(function ($sub) use ($worker) {
+                    $skillsArray = explode(',', $worker->skills);
+                    foreach ($skillsArray as $skill) {
+                        $sub->orWhere('title', 'like', '%' . trim($skill) . '%')
+                            ->orWhere('category', 'like', '%' . trim($skill) . '%');
+                    }
+                });
+            })
+            ->when($worker->location, function ($q) use ($worker) {
+                $q->orWhere('location', 'like', '%' . $worker->location . '%');
+            })
+            ->inRandomOrder()
+            ->take(3)
+            ->get();
+
+        return view('dashboard.worker', compact(
+            'jobs',
+            'applications',
+            'recommendedJobs',
+            'profileIncomplete'
+        ));
     }
 
-    // Step 2: Save profile details
-    public function saveProfile(Request $request)
+    /**
+     * Display all jobs the worker has applied for
+     */
+    public function appliedJobs()
     {
-        $request->validate([
-            'skills' => 'required|string',
-            'photo' => 'nullable|image|max:2048',
-        ]);
+        $applications = Application::with('job')
+            ->where('user_id', Auth::id())
+            ->get();
 
-        $user = Auth::user();
-
-        // Either update or create Worker profile linked to users.id
-        $worker = Worker::updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'skills' => $request->skills,
-                'photo' => $request->hasFile('photo')
-                    ? $request->file('photo')->store('photos', 'public')
-                    : null,
-            ]
-        );
-
-        return redirect()->route('landing')
-            ->with('success', 'Profile completed! Recommended jobs are now available.');
+        return view('worker.applied-jobs', compact('applications'));
     }
 
-    // Worker dashboard
-    public function dashboard()
+    /**
+     * Display the worker profile page
+     */
+    public function profile()
     {
-        $user = Auth::user();
-        $worker = Worker::where('user_id', $user->id)->first();
-
-        $recommendedJobs = Job::latest()->take(6)->get(); // replace with ML later
-
-        return view('worker.dashboard', compact('worker', 'recommendedJobs'));
+        return view('worker.profile');
     }
 
-    // Recommended jobs page
-    public function recommendedJobs()
+    /**
+     * Display the worker ratings page
+     */
+    public function ratings()
     {
-        $recommendedJobs = Job::latest()->take(10)->get();
-
-        return view('worker.jobs', compact('recommendedJobs'));
+        return view('worker.ratings');
     }
+    public function applications()
+{
+    $applications = auth()->user()->applications()->with('job')->get();
+    return view('worker.applications', compact('applications'));
+}
 
-    // Resume upload
-    public function uploadResume(Request $request)
-    {
-        $request->validate([
-            'resume' => 'required|mimes:pdf,doc,docx|max:2048',
-        ]);
+public function settings()
+{
+    return view('worker.settings');
+}
 
-        $user = Auth::user();
-        $worker = Worker::where('user_id', $user->id)->first();
-
-        if ($worker) {
-            $path = $request->file('resume')->store('resumes', 'public');
-            $worker->resume = $path;
-            $worker->save();
-        }
-
-        return back()->with('success', 'Resume uploaded successfully!');
-    }
 }

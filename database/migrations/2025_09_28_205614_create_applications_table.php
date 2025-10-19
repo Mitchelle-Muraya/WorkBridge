@@ -12,14 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('applications', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('job_id')->constrained('jobs')->onDelete('cascade');
-    $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-    $table->timestamps();
-    Schema::table('applications', function (Blueprint $table) {
-        $table->string('status')->default('pending');
+        $table->id();
+        $table->unsignedBigInteger('user_id');
+        $table->unsignedBigInteger('job_id');
+        $table->timestamp('applied_at')->useCurrent();
+        $table->timestamps();
+
+        $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+        $table->foreign('job_id')->references('id')->on('jobs')->onDelete('cascade');
     });
-});
+
 
 
     }

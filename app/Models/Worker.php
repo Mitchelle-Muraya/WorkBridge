@@ -10,15 +10,12 @@ class Worker extends Model
     use HasFactory;
 
     protected $fillable = [
-    'user_id',
-    'skills',
-    'photo',
-    'resume',
-    'phone',
-    'location',
-    'experience',
-];
-
+        'user_id',
+        'skills',
+        'photo',
+        'resume',
+        'experience'
+    ];
 
     public function user()
     {

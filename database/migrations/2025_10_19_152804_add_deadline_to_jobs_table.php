@@ -9,17 +9,17 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
+    public function up()
 {
-    Schema::table('users', function (Blueprint $table) {
-        $table->string('profile_status')->default('incomplete');
+    Schema::table('jobs', function (Blueprint $table) {
+        $table->date('deadline')->after('budget');
     });
 }
 
 public function down()
 {
-    Schema::table('users', function (Blueprint $table) {
-        $table->dropColumn('profile_status');
+    Schema::table('jobs', function (Blueprint $table) {
+        $table->dropColumn('deadline');
     });
 }
 
