@@ -154,10 +154,7 @@
             <input type="text" class="form-control" name="location" placeholder="e.g., Nairobi, Westlands" required>
           </div>
 
-          <div class="mb-3">
-            <label for="category" class="form-label">Category</label>
-            <input type="text" class="form-control" name="category" placeholder="e.g., Home Services, Construction, etc." required>
-          </div>
+
         </div>
 
         <!-- RIGHT COLUMN -->

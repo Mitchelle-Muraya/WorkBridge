@@ -4,58 +4,32 @@
 <div class="container-fluid px-4 py-4">
   <h3 class="mb-4 fw-bold text-primary">💼 Available Jobs</h3>
 
-  <!-- Search Bar -->
-  <form action="{{ route('worker.findJobs') }}" method="GET" class="d-flex mb-4" style="max-width: 500px;">
-    <input type="text" name="query" class="form-control me-2" placeholder="Search jobs, e.g., plumber, electrician...">
-    <button class="btn btn-primary"><i class="fas fa-search"></i></button>
-  </form>
+  <!-- Search Section -->
+<div class="d-flex mb-4" style="max-width: 500px;">
+  <input type="text" id="jobSearch" class="form-control me-2"
+         placeholder="Search jobs, e.g., plumber, electrician...">
+  <button id="searchBtn" type="button" class="btn btn-primary">
+      <i class="fas fa-search"></i>
+  </button>
+</div>
 
-  @if(session('success'))
-    <div class="alert alert-success">{{ session('success') }}</div>
-  @endif
-  @if(session('error'))
-    <div class="alert alert-danger">{{ session('error') }}</div>
-  @endif
-
-  <!-- Job Listings -->
-  @if($jobs->isEmpty())
-    <div class="text-center mt-5 text-muted">
-      <i class="fas fa-briefcase fa-3x mb-3"></i>
-      <p>No available jobs right now. Check back later!</p>
-    </div>
-  @else
-    <div class="row g-4">
-      @foreach($jobs as $job)
-      <div class="col-md-6 col-lg-4">
-        <div class="card job-card border-0 shadow-sm h-100">
-          <div class="card-body d-flex flex-column justify-content-between">
-            <div>
+<!-- Results will appear here -->
+<div id="searchResults">
+  @foreach($jobs as $job)
+      <div class="card job-card border-0 shadow-sm mb-3">
+          <div class="card-body">
               <h5 class="fw-bold text-primary">{{ $job->title }}</h5>
-              <p class="text-muted small mb-1">
-                <i class="fas fa-layer-group me-1"></i> {{ $job->category }}
-              </p>
-              <p class="text-muted small mb-1">
-                <i class="fas fa-map-marker-alt me-1"></i> {{ $job->location }}
-              </p>
-              <p class="small mt-2">
-                <span class="badge bg-light text-dark">Budget: Ksh {{ number_format($job->budget) }}</span><br>
-                <span class="badge bg-light text-dark">Deadline: {{ \Carbon\Carbon::parse($job->deadline)->format('M d, Y') }}</span>
-              </p>
-            </div>
-
-            <form action="{{ route('apply.job', $job->id) }}" method="POST" class="mt-3">
-              @csrf
-              <textarea name="cover_letter" class="form-control mb-2" rows="2" placeholder="Optional cover letter..."></textarea>
-              <button type="submit" class="btn btn-success w-100">
-                <i class="fas fa-paper-plane me-1"></i> Apply
-              </button>
-            </form>
+              <p class="text-muted small mb-1">{{ $job->location }}</p>
+              <p>{{ Str::limit($job->description, 100) }}</p>
+              <form action="{{ route('apply.job', $job->id) }}" method="POST">
+                  @csrf
+                  <button type="submit" class="btn btn-success w-100 mt-2">
+                      Apply
+                  </button>
+              </form>
           </div>
-        </div>
       </div>
-      @endforeach
-    </div>
-  @endif
+  @endforeach
 </div>
 
 <style>
@@ -91,4 +65,55 @@
     border-color: #45a29e;
   }
 </style>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+$(document).ready(function() {
+
+    // Prevent default form behavior if there's any
+    $(document).on('submit', 'form', function(e) {
+        if (!$(this).hasClass('apply-form')) {
+            e.preventDefault();
+        }
+    });
+
+    // Trigger AJAX when clicking the search button
+    $('#searchBtn').on('click', function(e) {
+        e.preventDefault(); // stop full-page reload
+        doSearch();
+    });
+
+    // Trigger AJAX as the user types (optional)
+    $('#jobSearch').on('keyup', function() {
+        let term = $(this).val().trim();
+        if (term.length > 1) {
+            doSearch();
+        } else {
+            $('#searchResults').html(''); // clear when input is empty
+        }
+    });
+
+    function doSearch() {
+        const term = $('#jobSearch').val().trim();
+
+        $.ajax({
+            url: "{{ route('search.jobs') }}",
+            type: 'GET',
+            data: { term: term },
+            beforeSend: function() {
+                $('#searchResults').html('<div class="text-center text-muted mt-3">🔍 Searching...</div>');
+            },
+            success: function(data) {
+                $('#searchResults').html(data);
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                $('#searchResults').html('<div class="text-danger mt-3 text-center">Error fetching results</div>');
+            }
+        });
+    }
+
+});
+</script>
+
 @endsection

@@ -18,6 +18,7 @@ WorkerController,
 ApplicationController,
 NotificationController,
 ChatController,
+ReportController,
 
 
 };
@@ -139,38 +140,105 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reviews/store', [ReviewController::class, 'store'])->name('reviews.store');
 });
 
+/*
+|--------------------------------------------------------------------------
+| 🧱 Job Actions
+|--------------------------------------------------------------------------
+*/
+Route::post('/jobs/apply/{id}', [JobController::class, 'apply'])->name('jobs.apply');
+Route::post('/jobs/complete/{id}', [JobController::class, 'complete'])->name('jobs.complete');
 
-// JOB ACTIONS (shared)
-    Route::post('/jobs/apply/{id}', [JobController::class, 'apply'])->name('jobs.apply');
-    Route::post('/jobs/complete/{id}', [JobController::class, 'complete'])->name('jobs.complete');
-
-    Route::middleware(['auth'])->group(function () {
-    // CLIENT ROUTES
+/*
+|--------------------------------------------------------------------------
+| 👥 Client Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/client', [ClientController::class, 'index'])->name('client.dashboard');
-    Route::get('/client/post-job', [ClientController::class, 'createJob'])->name('client.postJob');
-    Route::post('/client/post-job', [ClientController::class, 'storeJob'])->name('client.storeJob');
-    Route::get('/client/my-jobs', [ClientController::class, 'myJobs'])->name('client.myJobs');
-    Route::get('/client/messages', [ClientController::class, 'messages'])->name('client.messages');
-    Route::get('/client/reviews', [ClientController::class, 'reviews'])->name('client.reviews');
+    Route::get('/dashboard/client/post-job', [ClientController::class, 'createJob'])->name('client.postJob');
+    Route::post('/dashboard/client/post-job', [ClientController::class, 'storeJob'])->name('client.storeJob');
+    Route::get('/dashboard/client/my-jobs', [ClientController::class, 'myJobs'])->name('client.myJobs');
+    Route::get('/dashboard/client/applications', [ClientController::class, 'viewApplications'])->name('client.applications');
+    Route::get('/dashboard/client/messages', [ClientController::class, 'messages'])->name('messages.index');
+    Route::get('/dashboard/client/reviews', [ClientController::class, 'reviews'])->name('client.reviews');
+});
 
-    // WORKER ROUTES
+/*
+|--------------------------------------------------------------------------
+| 🧰 Worker Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/worker', [WorkerController::class, 'index'])->name('worker.dashboard');
     Route::get('/worker/available-jobs', [WorkerController::class, 'availableJobs'])->name('worker.availableJobs');
     Route::get('/worker/applied-jobs', [WorkerController::class, 'appliedJobs'])->name('worker.appliedJobs');
     Route::get('/worker/profile', [WorkerController::class, 'profile'])->name('worker.profile');
     Route::get('/worker/ratings', [WorkerController::class, 'ratings'])->name('worker.ratings');
-Route::get('/find-jobs', [WorkerController::class, 'findJobs'])->name('worker.findJobs');
-Route::post('/apply/{job}', [ApplicationController::class, 'apply'])->name('apply.job');
-
-
-    // ADMIN ROUTES
-    Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
-    Route::get('/admin/workers', [AdminController::class, 'manageWorkers'])->name('admin.workers');
-    Route::get('/admin/clients', [AdminController::class, 'manageClients'])->name('admin.clients');
+    Route::get('/worker/applications', [WorkerController::class, 'applications'])->name('worker.applications');
+    Route::get('/worker/reviews', [WorkerController::class, 'reviews'])->name('worker.reviews');
+    Route::get('/worker/settings', [WorkerController::class, 'settings'])->name('worker.settings');
+    Route::get('/find-jobs', [WorkerController::class, 'findJobs'])->name('worker.findJobs');
+    Route::post('/apply/{job}', [ApplicationController::class, 'apply'])->name('apply.job');
 });
+
+/*
+|--------------------------------------------------------------------------
+| 🧑‍💼 Admin Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
+    Route::get('/workers', [AdminController::class, 'manageWorkers'])->name('workers');
+    Route::get('/clients', [AdminController::class, 'manageClients'])->name('clients');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports');
+    Route::get('/reports/export/pdf', [ReportController::class, 'exportPDF'])->name('reports.pdf');
+    Route::get('/reports/export/excel', [ReportController::class, 'exportExcel'])->name('reports.excel');
+
+    // User management
+    Route::get('/users', [AdminController::class, 'manageUsers'])->name('users');
+    Route::post('/users/activate/{id}', [AdminController::class, 'activateUser'])->name('users.activate');
+    Route::post('/users/deactivate/{id}', [AdminController::class, 'deactivateUser'])->name('users.deactivate');
+    Route::delete('/users/delete/{id}', [AdminController::class, 'deleteUser'])->name('users.delete');
+
+    // Job management
+    Route::get('/jobs', [AdminController::class, 'manageJobs'])->name('jobs');
+    Route::post('/jobs/approve/{id}', [AdminController::class, 'approveJob'])->name('jobs.approve');
+    Route::post('/jobs/complete/{id}', [AdminController::class, 'completeJob'])->name('jobs.complete');
+    Route::delete('/jobs/delete/{id}', [AdminController::class, 'deleteJob'])->name('jobs.delete');
+});
+
+/*
+|--------------------------------------------------------------------------
+| 🔔 Notifications
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
+    Route::get('/notifications/fetch', [NotificationController::class, 'fetch'])->name('notifications.fetch');
+    Route::post('/notifications/mark-read', [NotificationController::class, 'markAllRead'])->name('notifications.markRead');
+    Route::post('/notifications/job-accepted/{application}', [NotificationController::class, 'jobAccepted'])->name('notifications.jobAccepted');
+    Route::post('/notifications/job-rejected/{application}', [NotificationController::class, 'jobRejected'])->name('notifications.jobRejected');
+});
+
+/*
+|--------------------------------------------------------------------------
+| 💬 Chat System
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
+    Route::get('/chat/{jobId}/{receiverId}', [ChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/fetch/{jobId}/{receiverId}', [ChatController::class, 'fetch'])->name('chat.fetch');
+    Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
+    Route::post('/chat/read/{jobId}/{receiverId}', [ChatController::class, 'markAsRead']);
+    Route::get('/messages/list', [ChatController::class, 'chatList'])->name('messages.list');
+});
+
+/*
+|--------------------------------------------------------------------------
+| 🧭 Universal Dashboard Redirect
+|--------------------------------------------------------------------------
+*/
 Route::get('/dashboard', function () {
     $user = auth()->user();
-
     if (!$user) {
         return redirect()->route('login');
     }
@@ -183,42 +251,17 @@ Route::get('/dashboard', function () {
     };
 })->name('dashboard');
 
-// Notifications routes
-Route::middleware(['auth'])->group(function () {
-    Route::get('/notifications/fetch', [NotificationController::class, 'fetch'])->name('notifications.fetch');
-    Route::post('/notifications/mark-read', [NotificationController::class, 'markAllRead'])->name('notifications.markRead');
+/*
+|--------------------------------------------------------------------------
+| 🔍 Search (AJAX)
+|--------------------------------------------------------------------------
+*/
+Route::get('/search/jobs', [WorkerController::class, 'searchJobs'])->name('search.jobs');
 
-    // New routes for job acceptance and rejection notifications
-    Route::post('/notifications/job-accepted/{application}', [NotificationController::class, 'jobAccepted'])
-        ->name('notifications.jobAccepted');
+Route::get('/search/jobs', [App\Http\Controllers\WorkerController::class, 'searchJobs'])->name('search.jobs');
+Route::post('/apply/{job}', [App\Http\Controllers\ApplicationController::class, 'apply'])->name('apply.job');
+Route::get('/admin/settings', function () {
+    return view('admin.settings');
+})->name('admin.settings');
 
-    Route::post('/notifications/job-rejected/{application}', [NotificationController::class, 'jobRejected'])
-        ->name('notifications.jobRejected');
-});
-// 💬 CHAT SYSTEM
-Route::middleware('auth')->group(function () {
-    Route::get('/chat/{jobId}/{receiverId}', [ChatController::class, 'index'])->name('chat.index');
-    Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
-    Route::get('/chat/fetch/{jobId}/{receiverId}', [ChatController::class, 'fetch'])->name('chat.fetch');
-});
-
-Route::get('/messages', [ChatController::class, 'index'])->name('messages.index');
-Route::get('/messages/list', [ChatController::class, 'chatList'])->name('messages.list');
-Route::post('/chat/read/{jobId}/{receiverId}', [ChatController::class, 'markAsRead']);
-Route::get('/worker/applications', [WorkerController::class, 'applications'])->name('worker.applications');
-
-
-
-Route::middleware(['auth'])->group(function () {
-    // Other worker routes...
-
-    Route::get('/worker/reviews', [WorkerController::class, 'reviews'])->name('worker.reviews');
-});
-Route::middleware(['auth'])->group(function () {
-    // Other worker routes...
-    Route::get('/worker/settings', [WorkerController::class, 'settings'])->name('worker.settings');
-});
-Route::middleware(['auth'])->group(function () {
-    Route::get('/chat/fetch/{job_id}/{receiver_id}', [ChatController::class, 'fetch'])->name('chat.fetch');
-Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
-});
+Route::get('/admin/reports/export/pdf', [App\Http\Controllers\ReportController::class, 'exportPDF'])->name('reports.pdf');

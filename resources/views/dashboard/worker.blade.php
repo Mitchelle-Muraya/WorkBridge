@@ -364,6 +364,20 @@
   background: rgba(255, 255, 255, 0.15);
   border-left: 3px solid var(--accent);
 }
+.stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-align: center;
+  padding: 22px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+.stat-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--primary);
+}
+
 
 
 </style>
@@ -391,8 +405,17 @@
       </a>
       <div class="dropdown">
         <a class="dropdown-toggle d-flex align-items-center text-decoration-none" href="#" data-bs-toggle="dropdown">
-          <img src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&background=00b3ff&color=fff&size=32"
-               class="rounded-circle me-2">
+          @php
+  $worker = \App\Models\Worker::where('user_id', Auth::id())->first();
+@endphp
+
+@if($worker && $worker->photo)
+  <img src="{{ asset('storage/' . $worker->photo) }}" class="rounded-circle me-2" width="32" height="32" alt="Profile">
+@else
+  <img src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&background=00b3ff&color=fff&size=32"
+       class="rounded-circle me-2" width="32" height="32" alt="Profile">
+@endif
+
           <span>{{ strtok(Auth::user()->name, ' ') }}</span>
         </a>
         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
@@ -443,20 +466,95 @@
 
 
   <div class="content">
-    @if($profileIncomplete)
-      <div class="alert-custom mb-4">
-        <strong>Complete your profile!</strong> Add your skills and experience to unlock job applications.
-        <a href="{{ route('worker.profile') }}" class="btn btn-sm btn-warning ms-2 fw-semibold">Complete Now</a>
-      </div>
-    @endif
+ @if($profileIncomplete)
+  <div class="mb-4 p-4 rounded-3"
+       style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff;">
+    <h5 class="fw-bold mb-2">Your Profile Progress</h5>
+    <div class="progress" style="height: 10px;">
+      <div class="progress-bar" role="progressbar"
+           style="width: {{ $profilePercentage }}%; background: #fff;"></div>
+    </div>
+    <p class="small mt-2 mb-0">
+      Profile {{ $profilePercentage }}% complete — add more skills and experience for better job matches!
+    </p>
+    <a href="{{ route('worker.profile') }}" class="btn btn-light btn-sm mt-2">Complete Profile</a>
+  </div>
+@endif
 
-    <h2 class="dashboard-title">Welcome back, <span>{{ Auth::user()->name }}</span> 👋</h2>
+
+
+
+
+    <h2 class="dashboard-title">Welcome back, <span>{{ Auth::user()->name }}</span> </h2>
     <p class="text-muted mb-4">Here’s what’s happening today.</p>
+    <!-- PROFILE PROGRESS HEADER -->
 
-    <form method="GET" action="{{ route('worker.dashboard') }}" class="search-container">
-      <input type="text" name="query" value="{{ request('query') }}" placeholder="Search for jobs..." />
-      <button type="submit"><i class="bi bi-search"></i></button>
-    </form>
+
+<!-- STAT CARDS -->
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <i class="bi bi-briefcase-fill text-primary fs-3"></i>
+      <h5 class="mt-2 fw-bold">{{ $availableJobsCount ?? 0 }}</h5>
+      <p class="text-muted small mb-0">Available Jobs</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <i class="bi bi-envelope-fill text-info fs-3"></i>
+      <h5 class="mt-2 fw-bold">{{ $pendingApplicationsCount ?? 0 }}</h5>
+      <p class="text-muted small mb-0">Applications Pending</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <i class="bi bi-chat-left-dots-fill text-success fs-3"></i>
+      <h5 class="mt-2 fw-bold">{{ $unreadMessages ?? 0 }}</h5>
+      <p class="text-muted small mb-0">Unread Messages</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <i class="bi bi-star-fill text-warning fs-3"></i>
+      <h5 class="mt-2 fw-bold">{{ number_format($averageRating ?? 0, 1) }}</h5>
+      <p class="text-muted small mb-0">Average Rating</p>
+    </div>
+  </div>
+</div>
+
+
+    <div class="search-container d-flex align-items-center gap-2">
+  <input type="text" id="jobSearch" class="form-control" placeholder="🔍 Search for jobs..." autocomplete="off">
+  <button id="searchBtn" type="button" class="btn btn-primary">
+      <i class="bi bi-search"></i>
+  </button>
+</div>
+
+<div id="searchResults" class="mt-3"></div>
+
+
+
+</script>
+<!-- Job Search Results -->
+<h4 class="fw-semibold mt-4 mb-3">
+    <i class="bi bi-briefcase text-primary"></i> Search Results
+</h4>
+
+@if(isset($jobs) && $jobs->isNotEmpty())
+    @foreach($jobs as $job)
+        <div class="job-card mb-3">
+            <h5 class="fw-bold">{{ $job->title }}</h5>
+            <p class="text-muted mb-1"><i class="bi bi-geo-alt"></i> {{ $job->location }}</p>
+            <p>{{ Str::limit($job->description, 100) }}</p>
+            <a href="{{ route('apply.job', $job->id) }}" class="btn btn-apply mt-2">
+                Apply Now
+            </a>
+        </div>
+    @endforeach
+@else
+    <div class="job-card text-center text-muted">No jobs found for your search.</div>
+@endif
+
 
     <h4 class="fw-semibold mt-4 mb-3"><i class="bi bi-stars text-warning"></i> Recommended Jobs</h4>
     @if($recommendedJobs->isEmpty())
@@ -466,54 +564,6 @@
         <div class="job-card mb-4"><h5 class="fw-bold">{{ $job->title }}</h5><p class="text-muted small">{{ $job->description }}</p></div>
       @endforeach
     @endif
-
-    <h4 class="fw-semibold mt-4 mb-3"><i class="bi bi-briefcase-fill text-primary"></i> Available Jobs</h4>
-    @if($jobs->isEmpty())
-      <div class="job-card text-center text-muted">No available jobs found.</div>
-    @else
-      @foreach($jobs as $job)
-        <div class="job-card mb-4">
-          <h5 class="fw-bold">{{ $job->title }}</h5>
-          <p class="text-muted small"><i class="bi bi-geo-alt"></i> {{ $job->location }}</p>
-          <p class="text-muted small"><i class="bi bi-tags"></i> {{ $job->category }}</p>
-          <p class="small text-muted">Budget: <span class="fw-semibold text-success">Ksh {{ number_format($job->budget) }}</span></p>
-          <p class="small text-muted">Deadline: {{ \Carbon\Carbon::parse($job->deadline)->format('M d, Y') }}</p>
-          @php $hasApplied = $applications->contains('job_id', $job->id); @endphp
-          @if($hasApplied)
-            <button class="btn btn-success w-100" disabled><i class="bi bi-check-circle"></i> Applied</button>
-          @else
-            <form action="{{ route('apply.job', $job->id) }}" method="POST">@csrf
-              <button type="submit" class="btn-apply w-100"><i class="bi bi-send"></i> Apply</button>
-            </form>
-          @endif
-        </div>
-      @endforeach
-    @endif
-
-   <h4 class="fw-semibold mt-4 mb-3"><i class="bi bi-check-circle-fill text-success"></i> Jobs You’ve Applied For</h4>
-@if($applications->isEmpty())
-  <div class="job-card text-muted">You haven’t applied for any jobs yet.</div>
-@else
-  @foreach($applications as $app)
-    <div class="job-card mb-4">
-      <h6 class="fw-bold">{{ $app->job->title }}</h6>
-      <p class="small mb-1">
-        <strong>Status:</strong>
-        <span class="badge bg-{{ $app->status == 'pending' ? 'warning' : ($app->status == 'accepted' ? 'success' : 'danger') }}">
-          {{ ucfirst($app->status) }}
-        </span>
-      </p>
-
-
-
-
-  </div>
-
-    @endforeach
-@endif
-
-
-
 
   <footer>© {{ date('Y') }} WorkBridge | Empowering Skilled Workers 🌍</footer>
 
@@ -603,10 +653,13 @@ function fetchMessageCount() {
 // ---------------------------
 // 🔁 REFRESH BOTH EVERY 10 SECONDS
 // ---------------------------
-setInterval(() => {
-  fetchNotifications();
-  fetchMessageCount();
-}, 10000);
+if (typeof fetchNotifications === 'function') {
+  setInterval(() => {
+    fetchNotifications();
+    fetchMessageCount();
+  }, 10000);
+}
+
 
 // Initial load
 fetchNotifications();
@@ -701,3 +754,72 @@ setInterval(function() {
 // ---------------------------
 $('#chatStatus').text('last seen 2 hours ago');
 </script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(function(){
+    // Trigger search when clicking button
+    $('#searchBtn').click(() => doSearch());
+
+    // Or typing
+    $('#jobSearch').on('keyup', function(e){
+        const term = $(this).val().trim();
+        if (term.length > 1) doSearch(term);
+        else $('#searchResults').html(''); // Clear if input is empty
+    });
+
+    function doSearch(term = $('#jobSearch').val().trim()){
+        $.ajax({
+            url: "{{ route('search.jobs') }}",
+            method: "GET",
+            data: { term: term },
+            beforeSend: function(){
+                $('#searchResults').html('<div class="text-center mt-3 text-muted">Searching...</div>');
+            },
+            success: function(data){
+                $('#searchResults').html(data);
+            },
+            error: function(){
+                $('#searchResults').html('<div class="text-danger mt-3">Error fetching results</div>');
+            }
+        });
+    }
+});
+</script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+$(function(){
+    $('#searchBtn').on('click', function(e){
+        e.preventDefault();
+        doSearch();
+    });
+
+    $('#jobSearch').on('keyup', function(){
+        let term = $(this).val().trim();
+        if(term.length > 1) doSearch();
+        else $('#searchResults').html('');
+    });
+
+    function doSearch(){
+        const term = $('#jobSearch').val().trim();
+        if(term === '') return;
+
+        $.ajax({
+            url: "{{ route('search.jobs') }}",
+            type: "GET",
+            data: { term: term },
+            beforeSend: function(){
+                $('#searchResults').html('<div class="text-center text-muted mt-3">🔍 Searching...</div>');
+            },
+            success: function(data){
+                $('#searchResults').html(data);
+            },
+            error: function(xhr, status, error){
+                console.error(error);
+                $('#searchResults').html('<div class="text-danger mt-3 text-center">⚠️ Error fetching results</div>');
+            }
+        });
+    }
+});
+</script>
+

@@ -19,41 +19,38 @@ class ProfileController extends Controller
 
     /**
      * Save or Update Worker Profile
-     */
-    public function saveProfile(Request $request)
-    {
-        $user = Auth::user();
+     */public function saveProfile(Request $request)
+{
+    $userId = Auth::id();
 
-        $validated = $request->validate([
-            'skills' => 'required|string|max:255',
-            'experience' => 'required|string|max:255',
-            'photo' => 'nullable|image|mimes:jpg,png,jpeg|max:2048',
-            'resume' => 'nullable|file|mimes:pdf,doc,docx|max:4096',
-        ]);
+    $request->validate([
+        'skills' => 'required|string|max:255',
+        'experience' => 'nullable|string|max:255',
+        'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'resume' => 'nullable|mimes:pdf,doc,docx|max:4096',
+    ]);
 
-        $photoPath = $request->hasFile('photo')
-            ? $request->file('photo')->store('photos', 'public')
-            : null;
+    // Find or create worker
+    $worker = \App\Models\Worker::firstOrNew(['user_id' => $userId]);
+    $worker->skills = $request->skills;
+    $worker->experience = $request->experience;
 
-        $resumePath = $request->hasFile('resume')
-            ? $request->file('resume')->store('resumes', 'public')
-            : null;
-
-        Worker::updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'skills' => $validated['skills'],
-                'experience' => $validated['experience'],
-                'photo' => $photoPath,
-                'resume' => $resumePath,
-            ]
-
-        );
-        $user->update(['profile_status' => 'complete']);
-
-
-
-        return redirect()->route('worker.dashboard')
-            ->with('success', '🎉 Profile completed successfully! You can now apply for jobs.');
+    // ✅ Handle photo upload safely
+    if ($request->hasFile('photo') && $request->file('photo')->isValid()) {
+        $photoPath = $request->file('photo')->store('profiles', 'public');
+        $worker->photo = $photoPath;
     }
+
+    // ✅ Handle resume upload safely
+    if ($request->hasFile('resume') && $request->file('resume')->isValid()) {
+        $resumePath = $request->file('resume')->store('resumes', 'public');
+        $worker->resume = $resumePath;
+    }
+
+    $worker->save();
+
+    return redirect()
+        ->route('worker.profile')
+        ->with('success', 'Profile saved successfully!');
+}
 }

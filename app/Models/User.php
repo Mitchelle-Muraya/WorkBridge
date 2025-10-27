@@ -9,6 +9,11 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
+    public function applications()
+{
+    return $this->hasMany(\App\Models\Application::class, 'user_id');
+}
+
     use HasFactory, Notifiable;
 
     protected $fillable = [
