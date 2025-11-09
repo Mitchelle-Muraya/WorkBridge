@@ -11,7 +11,7 @@ model = joblib.load("random_forest_model.pkl")
 vectorizer = joblib.load("tfidf_vectorizer.pkl")
 
 # --------------------------
-# Domain-specific expansions (same as predict.py)
+# Domain-specific keyword expansions
 # --------------------------
 custom_replacements = {
     "plumber": "plumber plumbing pipes taps sinks toilets repair bathroom leak",
@@ -32,38 +32,47 @@ custom_replacements = {
 informal_keywords = list(custom_replacements.keys())
 
 def expand_text(text: str) -> str:
+    """Expand text with domain-specific context."""
     text = text.lower().strip()
     expanded = text
-    for keyword, replacement in custom_replacements.items():
-        if keyword in text:
+    for kw, replacement in custom_replacements.items():
+        if kw in text:
             expanded += " " + replacement
     return expanded
 
+
 # --------------------------
-# Initialize Flask
+# Flask App
 # --------------------------
 app = Flask(__name__)
 CORS(app)
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "message": "✅ WorkBridge ML API is running successfully!",
+        "usage": "Send a POST request to /predict_job with a job description."
+    })
 
 @app.route("/predict_job", methods=["POST"])
 def predict_job():
     data = request.get_json()
     if not data or "description" not in data:
-        return jsonify({"error": "Please provide 'description'"}), 400
+        return jsonify({"error": "Missing 'description' field"}), 400
 
     desc = data["description"].lower().strip()
 
-    # 1️⃣ Keyword override
+    # Keyword override first
     for kw in informal_keywords:
         if kw in desc:
             return jsonify({
                 "description": desc,
                 "predicted_category": "Informal",
-                "confidence": {"Informal": 0.99, "IT": 0.0, },
+                "confidence": {"Informal": 0.99, "IT": 0.01},
                 "method": "keyword_override"
             })
 
-    # 2️⃣ Else expand + predict with model
+    # Else, use ML model
     expanded_desc = expand_text(desc)
     X_vec = vectorizer.transform([expanded_desc])
     probs = model.predict_proba(X_vec)[0]
@@ -81,5 +90,6 @@ def predict_job():
         "method": "ml_model"
     })
 
+
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
