@@ -320,6 +320,12 @@ input:checked + .slider:before {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
+.card:hover {
+  transform: translateY(-5px);
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 8px 25px rgba(0, 179, 255, 0.3);
+}
+
 
 
 
@@ -385,12 +391,14 @@ input:checked + .slider:before {
     <i class="bi bi-plus-circle"></i> Post Job
   </a>
 
-  @if(session('recommended_workers'))
+  @if(!empty($recommended))
+
   <div class="mt-4 px-3">
     <h5 class="text-white mb-2">👷 Recommended Workers</h5>
     <ul class="list-unstyled mb-0">
-      @foreach(session('recommended_workers') as $worker)
-        <li>- {{ $worker }}</li>
+        @foreach($recommended as $worker)
+
+              <li>- {{ $worker }}</li>
       @endforeach
     </ul>
   </div>
@@ -456,6 +464,64 @@ input:checked + .slider:before {
       </div>
     </div>
   </div>
+<!-- 🌟 AI-Recommended Workers Section -->
+@if(session('recommended_workers') && count(session('recommended_workers')) > 0)
+  <div class="mt-5 p-4 rounded-4 shadow-sm"
+       style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff;">
+    <h4 class="fw-bold mb-3">
+      <i class="bi bi-stars me-2"></i> Recommended Workers for Your Latest Job
+    </h4>
+    <p class="small opacity-75 mb-4">
+      Based on your job’s required skills, here are potential matches suggested by AI.
+    </p>
+
+    <div class="row">
+      @foreach($recommended as $worker)
+
+        <div class="col-md-6 col-lg-4 mb-4">
+          <div class="card border-0 shadow h-100 rounded-4 overflow-hidden">
+            <div class="card-body text-dark bg-light">
+              <div class="d-flex align-items-center mb-3">
+                <img src="{{ $worker['photo'] }}" class="rounded-circle me-3" width="55" height="55" alt="Worker Photo">
+                <div>
+                  <h6 class="fw-bold mb-1">{{ $worker['name'] }}</h6>
+                  <small class="text-muted">
+                    <i class="bi bi-geo-alt"></i> {{ $worker['location'] }}
+                  </small>
+                </div>
+              </div>
+
+              <p class="text-muted small mb-2">
+                <i class="bi bi-tools me-1"></i>
+                <strong>Skills:</strong> {{ $worker['skills'] }}
+              </p>
+
+              <!-- ⭐ Rating -->
+              <div class="mb-3">
+                @for($i = 1; $i <= 5; $i++)
+                  <i class="bi {{ $i <= $worker['rating'] ? 'bi-star-fill text-warning' : 'bi-star text-secondary' }}"></i>
+                @endfor
+                <small class="text-muted">({{ $worker['rating'] }} / 5)</small>
+              </div>
+
+              <!-- ✉️ Buttons -->
+              <div class="d-flex justify-content-between">
+                <a href="{{ route('messages.index') }}"
+                   class="btn btn-outline-info btn-sm fw-semibold">
+                  <i class="bi bi-chat-dots"></i> Message
+                </a>
+                <a href="{{ route('client.applications') }}"
+                   class="btn btn-outline-light btn-sm fw-semibold">
+                  <i class="bi bi-briefcase"></i> Hire Now
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      @endforeach
+    </div>
+  </div>
+@endif
 
   <hr class="my-5">
 
@@ -517,7 +583,7 @@ input:checked + .slider:before {
                 </h5>
 
                 <div class="row">
-                  @foreach(session('recommended_workers') as $worker)
+                  @foreach($recommended as $worker)
                     <div class="col-md-6 col-lg-4 mb-3">
                       <div class="application-card text-dark bg-light shadow-sm border-0 h-100 p-3">
                         <h6 class="fw-semibold mb-2 text-primary">

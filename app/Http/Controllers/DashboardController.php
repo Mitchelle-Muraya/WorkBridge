@@ -12,25 +12,29 @@ class DashboardController extends Controller
      * 🧑‍💼 CLIENT DASHBOARD
      * Shows jobs posted by the client and progress stats.
      */
-    public function clientDashboard()
-    {
-        $user = Auth::user();
+   public function clientDashboard()
+{
+    $user = Auth::user();
 
-        // Get jobs posted by this client
-        $jobs = Job::where('user_id', $user->id)->latest()->get();
+    $client = Client::where('user_id', $user->id)->first();
+    $jobs = Job::where('user_id', $user->id)->latest()->get();
 
-        $totalJobs = $jobs->count();
-        $inProgress = $jobs->where('status', 'in_progress')->count();
-        $completed = $jobs->where('status', 'completed')->count();
+    $totalJobs = $jobs->count();
+    $inProgress = $jobs->where('status', 'in_progress')->count();
+    $completed = $jobs->where('status', 'completed')->count();
 
-        // Get applications for this client's jobs
-        $applications = Application::whereIn('job_id', $jobs->pluck('id'))
-            ->with('user', 'job')
-            ->latest()
-            ->get();
+    $applications = Application::whereIn('job_id', $jobs->pluck('id'))
+        ->with('user', 'job')
+        ->latest()
+        ->get();
 
-        return view('dashboard.client', compact('jobs', 'applications', 'totalJobs', 'inProgress', 'completed'));
-    }
+    // ✅ Fetch AI recommended workers
+    $recommended = json_decode($client->recommended_workers ?? '[]', true);
+
+    return view('dashboard.client', compact(
+        'jobs', 'applications', 'totalJobs', 'inProgress', 'completed', 'recommended'
+    ));
+}
 
     /**
      * 👷 WORKER DASHBOARD

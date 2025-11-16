@@ -175,6 +175,19 @@
         </div>
       @endforeach
     @endif
+    @if(session('recommended_workers'))
+  <div class="alert alert-info mt-4">
+    <h5>🎯 Recommended Workers for your latest job</h5>
+    <ul>
+      @foreach(session('recommended_workers') as $worker)
+        <li>
+          <strong>{{ $worker['name'] }}</strong> — Skills: {{ $worker['skills'] }}
+        </li>
+      @endforeach
+    </ul>
+  </div>
+@endif
+
   </div>
 
   <footer>© {{ date('Y') }} WorkBridge | Empowering Employers 🌍</footer>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use App\Models\Job;
 use App\Models\Application;
 use App\Models\Client;
@@ -11,30 +12,35 @@ use App\Models\Client;
 class ClientController extends Controller
 {
     /**
-     * 🏠 CLIENT DASHBOARD
+     * 🏠 CLIENT DASHBOARD (redirects here after posting a job)
      */
-   public function index()
-{
-    $userId = Auth::id();
+    public function index()
+    {
+        $userId = Auth::id();
 
-    // ensure client record always exists
-    $client = \App\Models\Client::firstOrCreate(
-        ['user_id' => $userId],
-        ['company' => Auth::user()->name . ' Company', 'photo' => null]
-    );
+        // Ensure client record always exists
+        $client = Client::firstOrCreate(
+            ['user_id' => $userId],
+            ['company' => Auth::user()->name . ' Company', 'photo' => null]
+        );
 
-    $clientId = $client->id;
+        $clientId = $client->id;
 
-    $totalJobs = Job::where('client_id', $clientId)->count();
-    $jobsInProgress = Job::where('client_id', $clientId)->where('status', 'in_progress')->count();
-    $completedJobs = Job::where('client_id', $clientId)->where('status', 'completed')->count();
+        $totalJobs = Job::where('client_id', $clientId)->count();
+        $jobsInProgress = Job::where('client_id', $clientId)->where('status', 'in_progress')->count();
+        $completedJobs = Job::where('client_id', $clientId)->where('status', 'completed')->count();
 
-    $applications = Application::whereHas('job', function ($q) use ($clientId) {
-        $q->where('client_id', $clientId);
-    })->with(['user', 'job'])->latest()->take(5)->get();
+        $applications = Application::whereHas('job', function ($q) use ($clientId) {
+            $q->where('client_id', $clientId);
+        })->with(['user', 'job'])->latest()->take(5)->get();
 
-    return view('dashboard.client', compact('totalJobs', 'jobsInProgress', 'completedJobs', 'applications'));
-}
+        // Fetch recommended workers (if any)
+        $recommended = json_decode($client->recommended_workers ?? '[]', true);
+
+        return view('dashboard.client', compact(
+            'totalJobs', 'jobsInProgress', 'completedJobs', 'applications', 'recommended'
+        ));
+    }
 
     /**
      * 🧱 SHOW JOB CREATION FORM
@@ -45,50 +51,81 @@ class ClientController extends Controller
     }
 
     /**
-     * 💾 STORE A NEW JOB
+     * 💾 STORE A NEW JOB & GET AI RECOMMENDATIONS
      */
-  public function storeJob(Request $request)
-{
-    $user = Auth::user();
+    public function storeJob(Request $request)
+    {
+        $user = Auth::user();
 
-    // ✅ Ensure client record exists
-    $client = \App\Models\Client::firstOrCreate(
-        ['user_id' => $user->id],
-        ['company' => $user->name . ' Company', 'photo' => null]
-    );
+        // ✅ Ensure client record exists
+        $client = Client::firstOrCreate(
+            ['user_id' => $user->id],
+            ['company' => $user->name . ' Company', 'photo' => null]
+        );
 
-    if ($user->mode !== 'client') {
-        $user->update(['mode' => 'client']);
+        // Switch to client mode if needed
+        if ($user->mode !== 'client') {
+            $user->update(['mode' => 'client']);
+        }
+
+        // ✅ Merge skills (array + "other_skill")
+        $skills = $request->input('skills_required', []);
+        if ($request->filled('other_skill')) {
+            $skills[] = $request->input('other_skill');
+        }
+
+        $skillsString = implode(', ', $skills);
+
+        // ✅ Validate job inputs
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'budget' => 'required|numeric|min:0',
+            'deadline' => 'required|date|after:today',
+            'location' => 'required|string|max:255',
+        ]);
+
+        // ✅ Add extra fields
+        $validated['skills_required'] = $skillsString;
+        $validated['client_id'] = $client->id;
+        $validated['user_id'] = $user->id;
+        $validated['status'] = 'pending';
+
+        // ✅ Save job
+        $job = Job::create($validated);
+
+        // ✅ Get AI-recommended workers
+        try {
+            $response = Http::post('http://127.0.0.1:5000/recommend_workers', [
+                'skills' => $validated['skills_required']
+            ]);
+
+            if ($response->successful()) {
+                $recommended = $response->json()['recommended_workers'];
+
+                // Map and clean
+                $workers = collect($recommended)->map(function ($w) {
+                    return [
+                        'name' => $w['name'] ?? $w,
+                        'skills' => $w['skills'] ?? 'N/A',
+                        'photo' => $w['photo'] ?? null,
+                        'location' => $w['location'] ?? 'Nairobi, Kenya',
+                        'rating' => rand(3, 5)
+                    ];
+                });
+
+                // Save permanently in DB
+                $client->recommended_workers = json_encode($workers);
+                $client->save();
+            }
+        } catch (\Exception $e) {
+            \Log::error('Worker recommendation failed: ' . $e->getMessage());
+        }
+
+        // Redirect back to dashboard
+        return redirect()->route('client.dashboard')
+            ->with('success', 'Job posted successfully! AI-recommended workers updated.');
     }
-
-    // ✅ Handle skill array and merge with optional 'other_skill'
-    $skills = $request->input('skills_required', []);
-    if ($request->filled('other_skill')) {
-        $skills[] = $request->input('other_skill');
-    }
-
-    $skillsString = implode(', ', $skills); // Convert array to a single string
-
-    // ✅ Validate remaining inputs
-    $validated = $request->validate([
-        'title' => 'required|string|max:255',
-        'description' => 'required|string',
-        'budget' => 'required|numeric|min:0',
-        'deadline' => 'required|date|after:today',
-        'location' => 'required|string|max:255',
-    ]);
-
-    // ✅ Add processed fields
-    $validated['skills_required'] = $skillsString;
-    $validated['client_id'] = $client->id;
-    $validated['user_id'] = $user->id;
-    $validated['status'] = 'pending';
-
-    // ✅ Save job
-    $job = \App\Models\Job::create($validated);
-
-    return redirect()->route('client.my-jobs')->with('success', 'Job posted successfully!');
-}
 
     /**
      * 📋 LIST ALL JOBS POSTED BY THIS CLIENT

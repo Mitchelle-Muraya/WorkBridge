@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib
 import numpy as np
+import pandas as pd
 import os
 
 # --------------------------
@@ -53,7 +54,7 @@ CORS(app)
 def home():
     return jsonify({
         "message": "✅ WorkBridge ML API is running successfully!",
-        "usage": "Send a POST request to /predict_job with a job or skill description."
+        "usage": "Send a POST request to /predict_job or /recommend_workers."
     })
 
 
@@ -119,6 +120,28 @@ def predict_job():
         return jsonify({"error": str(e)}), 500
 
 
+# ✅ NEW: Recommend Workers API
+@app.route('/recommend_workers', methods=['POST'])
+def recommend_workers():
+    data = request.json
+    job_skills = data.get('skills', '')
+
+    try:
+        # Example: Match job_skills with workers' skills in dataset
+        workers_df = pd.read_csv('workers_dataset.csv')  # columns: id, name, skills
+        matches = workers_df[workers_df['skills'].str.contains(job_skills, case=False, na=False)]
+
+        # Return top 5 best-fit workers
+        recommended = matches.head(5).to_dict(orient='records')
+        return jsonify({'recommended_workers': recommended})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# --------------------------
+# Run Flask App
+# --------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
