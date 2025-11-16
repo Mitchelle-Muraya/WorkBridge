@@ -540,6 +540,7 @@
     <i class="bi bi-briefcase text-primary"></i> Search Results
 </h4>
 
+
 @if(isset($jobs) && $jobs->isNotEmpty())
     @foreach($jobs as $job)
         <div class="job-card mb-3">
@@ -555,15 +556,52 @@
     <div class="job-card text-center text-muted">No jobs found for your search.</div>
 @endif
 
-
-    <h4 class="fw-semibold mt-4 mb-3"><i class="bi bi-stars text-warning"></i> Recommended Jobs</h4>
-    @if($recommendedJobs->isEmpty())
-      <div class="job-card text-center text-muted">No recommended jobs right now. (Coming soon)</div>
-    @else
+{{-- 🌟 AI RECOMMENDED JOBS SECTION --}}
+@if(isset($recommendedJobs) && !$recommendedJobs->isEmpty())
+  <div class="mt-5">
+    <h4 class="fw-bold mb-3">
+      <i class="bi bi-stars text-warning"></i> Recommended Jobs for You
+    </h4>
+    <div class="row">
       @foreach($recommendedJobs as $job)
-        <div class="job-card mb-4"><h5 class="fw-bold">{{ $job->title }}</h5><p class="text-muted small">{{ $job->description }}</p></div>
+        <div class="col-md-6 col-lg-4 mb-4">
+          <div class="job-card shadow-sm p-3 h-100">
+            <h5 class="fw-semibold">{{ $job->title }}</h5>
+            <p class="text-muted mb-2">
+              <i class="bi bi-geo-alt"></i> {{ $job->location ?? 'Location not specified' }}
+            </p>
+            <p>{{ Str::limit($job->description, 100) }}</p>
+            <a href="{{ route('worker.find-jobs') }}" class="btn btn-apply mt-2 w-100">
+              View Job
+            </a>
+          </div>
+        </div>
       @endforeach
-    @endif
+    </div>
+  </div>
+@else
+  <div class="alert alert-info text-center mt-4">
+    <i class="bi bi-lightbulb"></i> No AI job recommendations yet — complete your profile to get personalized matches!
+  </div>
+@endif
+
+
+    @if(!$recommendedJobs->isEmpty())
+<div class="row">
+    @foreach($recommendedJobs as $job)
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card h-100 shadow-sm border-0 p-3">
+                <h6 class="fw-bold">{{ $job->title }}</h6>
+                <p class="text-muted">{{ Str::limit($job->description, 100) }}</p>
+                <a href="{{ route('worker.find-jobs') }}" class="btn btn-sm btn-outline-primary">
+                    View Job
+                </a>
+            </div>
+        </div>
+    @endforeach
+</div>
+@endif
+
 
   <footer>© {{ date('Y') }} WorkBridge | Empowering Skilled Workers 🌍</footer>
 

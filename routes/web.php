@@ -106,11 +106,7 @@ Route::middleware('auth')->group(function () {
 
 
 
-    // 📝 Job management (Client)
-    Route::post('/dashboard/client/post-job', [DashboardController::class, 'postJob'])->name('client.postJob');
-    Route::get('/dashboard/client/applicants/{job}', [DashboardController::class, 'viewApplicants'])->name('client.applicants');
-    Route::delete('/dashboard/client/delete-job/{job}', [DashboardController::class, 'deleteJob'])->name('client.deleteJob');
-    Route::post('/client/rate/{application}', [DashboardController::class, 'rateWorker'])->name('client.rateWorker');
+
 
     //🔄 Auto Redirect After Login
     Route::get('/dashboard', function () {
@@ -154,14 +150,17 @@ Route::post('/jobs/complete/{id}', [JobController::class, 'complete'])->name('jo
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard/client', [ClientController::class, 'index'])->name('client.dashboard');
+
     Route::get('/dashboard/client/post-job', [ClientController::class, 'createJob'])->name('client.postJob');
     Route::post('/dashboard/client/post-job', [ClientController::class, 'storeJob'])->name('client.storeJob');
-    Route::get('/dashboard/client/my-jobs', [ClientController::class, 'myJobs'])->name('client.myJobs');
+    Route::get('/dashboard/client/my-jobs', [ClientController::class, 'myJobs'])->name('client.my-jobs');
     Route::get('/dashboard/client/applications', [ClientController::class, 'viewApplications'])->name('client.applications');
     Route::get('/dashboard/client/messages', [ClientController::class, 'messages'])->name('messages.index');
     Route::get('/dashboard/client/reviews', [ClientController::class, 'reviews'])->name('client.reviews');
+    Route::get('/dashboard/client', [ClientController::class, 'index'])->name('client.dashboard');
+
 });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -237,19 +236,6 @@ Route::middleware(['auth'])->group(function () {
 | 🧭 Universal Dashboard Redirect
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard', function () {
-    $user = auth()->user();
-    if (!$user) {
-        return redirect()->route('login');
-    }
-
-    return match ($user->role) {
-        'worker' => redirect()->route('worker.dashboard'),
-        'client' => redirect()->route('client.dashboard'),
-        'admin'  => redirect()->route('admin.dashboard'),
-        default  => redirect()->route('landing'),
-    };
-})->name('dashboard');
 
 /*
 |--------------------------------------------------------------------------

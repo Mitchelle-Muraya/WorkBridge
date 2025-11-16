@@ -3,126 +3,82 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Job;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Job;
 use App\Models\Application;
 
 class ClientController extends Controller
 {
     // CLIENT DASHBOARD
-    public function index()
-    {
-        $clientId = Auth::id();
+   public function index()
+{
+    $clientId = Auth::id();
 
-        // ✅ Job stats for this client
-        $totalJobs = Job::where('client_id', $clientId)->count();
-        $jobsInProgress = Job::where('client_id', $clientId)
-            ->where('status', 'in_progress')
-            ->count();
-        $completedJobs = Job::where('client_id', $clientId)
-            ->where('status', 'completed')
-            ->count();
+    $totalJobs = Job::where('client_id', $clientId)->count();
+    $jobsInProgress = Job::where('client_id', $clientId)->where('status', 'in_progress')->count();
+    $completedJobs = Job::where('client_id', $clientId)->where('status', 'completed')->count();
 
-        // ✅ Recent applications for this client's jobs
-        $applications = Application::whereHas('job', function ($query) use ($clientId) {
-                $query->where('client_id', $clientId);
-            })
-            ->with(['user', 'job'])
-            ->orderBy('created_at', 'desc')
-            ->take(5)
-            ->get();
+    $applications = Application::whereHas('job', function ($q) use ($clientId) {
+        $q->where('client_id', $clientId);
+    })->with(['user', 'job'])->latest()->take(5)->get();
 
-        // ✅ (Optional) Log debug info instead of dd()
-        logger()->info('Client dashboard loaded', [
-            'client_id' => $clientId,
-            'totalJobs' => $totalJobs,
-            'inProgress' => $jobsInProgress,
-            'completed' => $completedJobs,
-            'application_count' => $applications->count(),
-        ]);
+    return view('dashboard.client', compact('totalJobs', 'jobsInProgress', 'completedJobs', 'applications'));
+}
 
-
-        // ✅ Return dashboard view
-        return view('dashboard.client', compact(
-            'totalJobs',
-            'jobsInProgress',
-            'completedJobs',
-            'applications'
-        ));
-    }
-
-    // POST JOB PAGE
-    public function createJob()
-    {
+    public function createJob() {
         return view('client.post-job');
     }
 
-    // STORE JOB
     public function storeJob(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'budget' => 'required|numeric',
-            'deadline' => 'required|date',
-        ]);
+{
+    $user = Auth::user();
 
-        $clientId = Auth::id();
+    // ✅ Ensure client record exists in `clients` table
+    $client = \App\Models\Client::firstOrCreate(
+        ['user_id' => $user->id],
+        ['company' => $user->name . ' Company', 'photo' => null]
+    );
 
-        $job = new Job();
-        $job->title = $request->title;
-        $job->description = $request->description;
-        $job->budget = $request->budget;
-        $job->deadline = $request->deadline;
-        $job->client_id = $clientId;
-        $job->status = 'pending';
-
-        $skills = $request->skills_required ?? [];
-        if (!empty($request->other_skill)) {
-            $skills[] = $request->other_skill;
-        }
-        $job->skills_required = implode(', ', $skills);
-        $job->location = $request->location ?? 'Not specified';
-        $job->save();
-
-        return redirect()->back()->with('success', 'Job posted successfully!');
+    // ✅ Update user mode to client
+    if ($user->mode !== 'client') {
+        $user->update(['mode' => 'client']);
     }
 
-    // MY JOBS PAGE
-    public function myJobs()
-    {
+    // ✅ Validate and save the job
+    $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'required|string',
+        'skills_required' => 'required|string',
+        'budget' => 'required|numeric|min:0',
+        'deadline' => 'required|date|after:today',
+    ]);
+
+    $validated['client_id'] = $client->id;
+
+    \App\Models\Job::create($validated);
+
+    return redirect()->route('client.my-jobs')->with('success', 'Job posted successfully!');
+}
+
+    public function myJobs() {
         $jobs = Job::where('client_id', Auth::id())->latest()->get();
         return view('client.my-jobs', compact('jobs'));
     }
 
-    // MESSAGES & REVIEWS
-   public function messages() {
-    return view('messages.index');
-}
+    public function messages() { return view('messages.index'); }
+    public function reviews() { return view('client.reviews'); }
 
-
-    public function reviews()
-    {
-        return view('client.reviews');
-    }
-
-    // APPLICATIONS
-    public function viewApplications()
-    {
+    public function viewApplications() {
         $clientId = Auth::id();
-
-        $applications = Application::whereHas('job', function ($query) use ($clientId) {
-                $query->where('client_id', $clientId);
-            })
+        $applications = Application::whereHas('job', fn($q) => $q->where('client_id', $clientId))
             ->with(['user', 'job'])
-            ->orderBy('created_at', 'desc')
+            ->latest()
             ->get();
-
         return view('client.applications', compact('applications'));
     }
 
-    public function applications()
-    {
+    public function applications() {
         return $this->viewApplications();
     }
 }

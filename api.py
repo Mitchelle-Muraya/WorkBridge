@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib
 import numpy as np
+import os
 
 # --------------------------
 # Load trained model + vectorizer
@@ -42,59 +43,81 @@ def expand_text(text: str) -> str:
 
 
 # --------------------------
-# Flask App
+# Flask App Setup
 # --------------------------
 app = Flask(__name__)
 CORS(app)
+
 
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({
         "message": "✅ WorkBridge ML API is running successfully!",
-        "usage": "Send a POST request to /predict_job with a job description."
+        "usage": "Send a POST request to /predict_job with a job or skill description."
     })
+
 
 @app.route("/predict_job", methods=["POST"])
 def predict_job():
-    data = request.get_json()
-    if not data or "description" not in data:
-        return jsonify({"error": "Missing 'description' field"}), 400
+    """Handles both worker-skill and job-description inputs intelligently."""
+    try:
+        data = request.get_json()
+        if not data or "description" not in data:
+            return jsonify({"error": "Missing 'description' field"}), 400
 
-    desc = data["description"].lower().strip()
+        desc = data["description"].lower().strip()
+        expanded_desc = expand_text(desc)
 
-    # Keyword override first
-    for kw in informal_keywords:
-        if kw in desc:
+        # --- ML Prediction ---
+        X_vec = vectorizer.transform([expanded_desc])
+        probs = model.predict_proba(X_vec)[0]
+        pred_class = model.classes_[np.argmax(probs)]
+        confidence = {
+            label: round(float(prob), 2)
+            for label, prob in zip(model.classes_, probs)
+        }
+
+        # --- Decide Response Type ---
+        if any(word in desc for word in ["need", "hire", "looking for", "job", "worker", "technician", "fix"]):
+            # Client posting a job → Recommend workers
+            recommended_workers = []
+            for kw in informal_keywords:
+                if kw in desc:
+                    recommended_workers.append(kw.title() + " (Skilled Worker)")
+            if not recommended_workers:
+                recommended_workers = ["No matches found"]
+
             return jsonify({
                 "description": desc,
-                "predicted_category": "Informal",
-                "confidence": {"Informal": 0.99, "IT": 0.01},
-                "method": "keyword_override"
+                "predicted_category": pred_class,
+                "confidence": confidence,
+                "recommended_workers": recommended_workers,
+                "source": "client_job"
             })
 
-    # Else, use ML model
-    expanded_desc = expand_text(desc)
-    X_vec = vectorizer.transform([expanded_desc])
-    probs = model.predict_proba(X_vec)[0]
-    pred_class = model.classes_[np.argmax(probs)]
+        else:
+            # Worker skills → Recommend jobs
+            recommended_jobs = []
+            for kw in informal_keywords:
+                if kw in desc:
+                    recommended_jobs.append({
+                        "job_title": f"{kw.title()} Required for Local Project",
+                        "category": "Informal"
+                    })
+            if not recommended_jobs:
+                recommended_jobs = [{"job_title": "No matches found", "category": "None"}]
 
-    confidence = {
-        label: round(float(prob), 2)
-        for label, prob in zip(model.classes_, probs)
-    }
+            return jsonify({
+                "description": desc,
+                "predicted_category": pred_class,
+                "confidence": confidence,
+                "recommended_jobs": recommended_jobs,
+                "source": "worker_profile"
+            })
 
-    return jsonify({
-        "description": desc,
-        "predicted_category": pred_class,
-        "confidence": confidence,
-        "method": "ml_model"
-    })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
-
-import os
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

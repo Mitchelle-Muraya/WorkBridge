@@ -5,7 +5,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WorkBridge | Job Applications</title>
+  <title>WorkBridge </title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
@@ -375,113 +375,186 @@ input:checked + .slider:before {
   </div>
 </nav>
 
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-    <a href="{{ route('client.dashboard') }}"><i class="bi bi-grid"></i> Dashboard</a>
-    <a href="{{ route('client.postJob') }}"><i class="bi bi-plus-circle"></i> Post Job</a>
-    <a href="#"><i class="bi bi-briefcase"></i> My Jobs</a>
-    <a href="{{ route('client.applications') }}" class="active"><i class="bi bi-envelope-open"></i> Applications</a>
-    <a href="{{ route('messages.index') }}" class="position-relative">
-  <i class="bi bi-chat-dots"></i> Messages
-  <span id="msgBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger small d-none">0</span>
-</a>
-    <a href="#"><i class="bi bi-star"></i> Reviews</a>
+<!-- 🧭 SIDEBAR -->
+<div class="sidebar">
+  <a href="{{ route('client.dashboard') }}" class="active">
+    <i class="bi bi-grid"></i> Dashboard
+  </a>
+
+  <a href="{{ route('client.postJob') }}">
+    <i class="bi bi-plus-circle"></i> Post Job
+  </a>
+
+  @if(session('recommended_workers'))
+  <div class="mt-4 px-3">
+    <h5 class="text-white mb-2">👷 Recommended Workers</h5>
+    <ul class="list-unstyled mb-0">
+      @foreach(session('recommended_workers') as $worker)
+        <li>- {{ $worker }}</li>
+      @endforeach
+    </ul>
   </div>
+  @endif
 
-  <!-- CONTENT -->
-  <div class="content">
-    <h2 class="mb-4"><i class="bi bi-people-fill me-2"></i>Job Applications</h2>
+  <a href="{{ route('client.my-jobs') }}">
+    <i class="bi bi-briefcase"></i> My Jobs
+  </a>
 
-   @forelse ($applications as $app)
-  <div class="application-card mb-4">
-    <div class="d-flex justify-content-between align-items-center flex-wrap">
-      <div>
-        <h4 class="fw-bold mb-2">{{ $app->job->title }}</h4>
-        <p class="text-muted mb-1">
-          <i class="bi bi-person-fill text-primary"></i>
-          <strong>Applicant:</strong> {{ $app->user->name }}
-        </p>
-        <p class="mb-1">
-          <strong>Status:</strong>
-          <span class="badge
-            {{ $app->status == 'pending' ? 'bg-warning text-dark' :
-               ($app->status == 'accepted' ? 'bg-success' : 'bg-danger') }}">
-            {{ ucfirst($app->status) }}
-          </span>
-        </p>
-        <small class="text-muted">
-          <i class="bi bi-calendar2-week"></i>
-          Applied on {{ $app->created_at->format('M d, Y h:i A') }}
-        </small>
-      </div>
+  <a href="{{ route('client.applications') }}">
+    <i class="bi bi-envelope-open"></i> Applications
+  </a>
 
-      <div class="mt-3 mt-sm-0 text-end">
-        @if($app->status == 'pending')
-          <form action="{{ route('applications.updateStatus', $app->id) }}" method="POST" class="d-inline">
-            @csrf
-            @method('PUT')
-            <input type="hidden" name="status" value="accepted">
-            <button type="submit" class="btn-approve me-2">
-              <i class="bi bi-check2-circle"></i> Approve
-            </button>
-          </form>
+  <a href="{{ route('messages.index') }}" class="position-relative">
+    <i class="bi bi-chat-dots"></i> Messages
+    <span id="msgBadge"
+          class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger small d-none">
+      0
+    </span>
+  </a>
 
-          <form action="{{ route('applications.updateStatus', $app->id) }}" method="POST" class="d-inline">
-            @csrf
-            @method('PUT')
-            <input type="hidden" name="status" value="rejected">
-            <button type="submit" class="btn-reject">
-              <i class="bi bi-x-circle"></i> Reject
-            </button>
-          </form>
-        @elseif($app->status == 'accepted')
-          <!-- ✅ CHAT BUTTON (only visible after acceptance) -->
-          <a href="#"
-   class="btn btn-outline-info mt-2 openChat"
-   data-job="{{ $app->job_id }}"
-   data-receiver="{{ $app->user_id }}"
-   data-name="{{ $app->user->name }}"
-   data-avatar="https://ui-avatars.com/api/?name={{ urlencode($app->user->name) }}&background=00b3ff&color=fff">
-   <i class="bi bi-chat-dots"></i> Chat
-</a>
-
-
-      </div>
-    </div>
-  </div>
-  <!-- 🌟 CHAT MODAL -->
-<div class="modal fade" id="chatModal" tabindex="-1" aria-labelledby="chatModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content chat-modal">
-      <div class="modal-header chat-header">
-        <div class="d-flex align-items-center gap-2">
-          <i class="bi bi-chat-dots-fill fs-4"></i>
-          <h5 class="modal-title fw-semibold mb-0" id="chatModalLabel">Conversation</h5>
-        </div>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-
-      <div class="modal-body chat-body" id="chatContent">
-        <div class="text-center text-muted py-5">Loading chat...</div>
-      </div>
-
-      <div class="modal-footer chat-footer">
-        <form id="chatForm" class="w-100 d-flex align-items-center gap-2">
-          <input type="text" id="chatMessage" class="form-control flex-grow-1" placeholder="Type a message..." required>
-          <button type="submit" class="btn btn-send"><i class="bi bi-send-fill"></i></button>
-        </form>
-      </div>
-    </div>
-  </div>
+  <a href="#">
+    <i class="bi bi-star"></i> Reviews
+  </a>
 </div>
 
-  @endif
-@empty
-  <div class="alert alert-info text-center">
-    <i class="bi bi-info-circle"></i> No job applications yet.
-  </div>
-@endforelse
+<!-- 🧩 MAIN CONTENT -->
+<div class="content">
 
+  <!-- 🌟 WELCOME HEADER -->
+  <div class="mb-4">
+    <h2 class="fw-bold">Welcome back, {{ strtok(Auth::user()->name, ' ') }} 👋</h2>
+    <p class="text-muted mb-0">Here’s what’s happening today.</p>
+  </div>
+
+  <!-- 📊 DASHBOARD OVERVIEW -->
+  <h2 class="mb-4 text-primary">
+    <i class="bi bi-speedometer2 me-2"></i> Dashboard Overview
+  </h2>
+
+  <div class="row g-4 mb-5">
+    <div class="col-md-4">
+      <div class="application-card text-center py-4">
+        <i class="bi bi-briefcase-fill fs-1 text-primary mb-2"></i>
+        <h5 class="fw-bold">Total Jobs Posted</h5>
+        <h3 class="fw-bold text-dark">{{ $totalJobs ?? 0 }}</h3>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="application-card text-center py-4">
+        <i class="bi bi-gear-fill fs-1 text-info mb-2"></i>
+        <h5 class="fw-bold">Jobs In Progress</h5>
+        <h3 class="fw-bold text-dark">{{ $jobsInProgress ?? 0 }}</h3>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="application-card text-center py-4">
+        <i class="bi bi-check-circle-fill fs-1 text-success mb-2"></i>
+        <h5 class="fw-bold">Completed Jobs</h5>
+        <h3 class="fw-bold text-dark">{{ $completedJobs ?? 0 }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <hr class="my-5">
+
+    <!-- 📨 JOB APPLICATIONS -->
+  <h2 class="mb-4">
+    <i class="bi bi-people-fill me-2"></i> Job Applications
+  </h2>
+
+  @forelse ($applications as $app)
+    <div class="application-card mb-4">
+      <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+          <h4 class="fw-bold mb-2">{{ $app->job->title }}</h4>
+          <p class="text-muted mb-1">
+            <i class="bi bi-person-fill text-primary"></i>
+            <strong>Applicant:</strong> {{ $app->user->name }}
+          </p>
+          <p class="mb-1">
+            <strong>Status:</strong>
+            <span class="badge
+              {{ $app->status == 'pending' ? 'bg-warning text-dark' :
+                 ($app->status == 'accepted' ? 'bg-success' : 'bg-danger') }}">
+              {{ ucfirst($app->status) }}
+            </span>
+          </p>
+          <small class="text-muted">
+            <i class="bi bi-calendar2-week"></i>
+            Applied on {{ $app->created_at->format('M d, Y h:i A') }}
+          </small>
+        </div>
+
+        <div class="mt-3 mt-sm-0 text-end">
+          @if($app->status == 'pending')
+            <form action="{{ route('applications.updateStatus', $app->id) }}" method="POST" class="d-inline">
+              @csrf
+              @method('PUT')
+              <input type="hidden" name="status" value="accepted">
+              <button type="submit" class="btn-approve me-2">
+                <i class="bi bi-check2-circle"></i> Approve
+              </button>
+            </form>
+
+            <form action="{{ route('applications.updateStatus', $app->id) }}" method="POST" class="d-inline">
+              @csrf
+              @method('PUT')
+              <input type="hidden" name="status" value="rejected">
+              <button type="submit" class="btn-reject">
+                <i class="bi bi-x-circle"></i> Reject
+              </button>
+            </form>
+
+          @elseif($app->status == 'accepted')
+            {{-- 🔮 AI RECOMMENDED WORKERS --}}
+            @if(session('recommended_workers') && count(session('recommended_workers')) > 0)
+              <div class="mt-4 p-4 rounded-3"
+                   style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff;">
+                <h5 class="fw-bold mb-3">
+                  <i class="bi bi-stars me-2"></i> Recommended Workers for Your Latest Job
+                </h5>
+
+                <div class="row">
+                  @foreach(session('recommended_workers') as $worker)
+                    <div class="col-md-6 col-lg-4 mb-3">
+                      <div class="application-card text-dark bg-light shadow-sm border-0 h-100 p-3">
+                        <h6 class="fw-semibold mb-2 text-primary">
+                          <i class="bi bi-person-badge me-1"></i> {{ $worker }}
+                        </h6>
+                        <p class="text-muted small mb-2">
+                          Based on your job’s description and skills required.
+                        </p>
+                        <a href="{{ route('client.applications') }}" class="btn btn-sm btn-outline-info">
+                          <i class="bi bi-envelope-open"></i> View Applicants
+                        </a>
+                      </div>
+                    </div>
+                  @endforeach
+                </div>
+              </div>
+            @endif
+
+            <!-- ✅ Chat button (only for accepted jobs) -->
+            <a href="#"
+              class="btn btn-outline-info mt-3 openChat"
+              data-job="{{ $app->job_id }}"
+              data-receiver="{{ $app->user_id }}"
+              data-name="{{ $app->user->name }}"
+              data-avatar="https://ui-avatars.com/api/?name={{ urlencode($app->user->name) }}&background=00b3ff&color=fff">
+              <i class="bi bi-chat-dots"></i> Chat
+            </a>
+          @endif
+        </div>
+      </div>
+    </div>
+  @empty
+    <div class="alert alert-info text-center">
+      <i class="bi bi-info-circle"></i> No job applications yet.
+    </div>
+  @endforelse
+</div> <!-- end .content -->
 
   <footer>© {{ date('Y') }} WorkBridge | Empowering Employers 🌍</footer>
 
