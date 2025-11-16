@@ -571,7 +571,7 @@
               <i class="bi bi-geo-alt"></i> {{ $job->location ?? 'Location not specified' }}
             </p>
             <p>{{ Str::limit($job->description, 100) }}</p>
-            <a href="{{ route('worker.find-jobs') }}" class="btn btn-apply mt-2 w-100">
+            <a href="{{ route('worker.findJobs') }}" class="btn btn-apply mt-2 w-100">
               View Job
             </a>
           </div>
@@ -593,7 +593,7 @@
             <div class="card h-100 shadow-sm border-0 p-3">
                 <h6 class="fw-bold">{{ $job->title }}</h6>
                 <p class="text-muted">{{ Str::limit($job->description, 100) }}</p>
-                <a href="{{ route('worker.find-jobs') }}" class="btn btn-sm btn-outline-primary">
+                <a href="{{ route('worker.findJobs') }}" class="btn btn-sm btn-outline-primary">
                     View Job
                 </a>
             </div>

@@ -47,7 +47,7 @@ class WorkerController extends Controller
         $availableJobsCount = Job::count();
         $pendingApplicationsCount = Application::where('user_id', $userId)->count();
         $unreadMessages = Message::where('receiver_id', $userId)
-            ->where('is_read', false)
+
             ->count();
         $averageRating = Review::where('worker_id', $userId)->avg('rating');
 
@@ -204,6 +204,6 @@ class WorkerController extends Controller
             ->latest()
             ->get();
 
-        return view('worker.find-jobs', compact('jobs'));
+        return view('worker.findJobs', compact('jobs'));
     }
 }
