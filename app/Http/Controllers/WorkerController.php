@@ -21,49 +21,61 @@ class WorkerController extends Controller
         $userId = Auth::id();
         $worker = Worker::where('user_id', $userId)->first();
 
-        // 🧮 Profile Completion
+        /**
+         * 🧮 PROFILE COMPLETION CALCULATION
+         */
         $requiredFields = ['skills', 'experience', 'photo'];
         $filled = 0;
+
         if ($worker) {
             foreach ($requiredFields as $field) {
-                if (!empty($worker->$field)) $filled++;
+                if (!empty($worker->$field)) {
+                    $filled++;
+                }
             }
         }
-        $profilePercentage = count($requiredFields) > 0 ? round(($filled / count($requiredFields)) * 100) : 0;
+
+        $profilePercentage = count($requiredFields) > 0
+            ? round(($filled / count($requiredFields)) * 100)
+            : 0;
+
         $profileIncomplete = $profilePercentage < 100;
 
-        // 📊 Dashboard Stats
+        /**
+         * 📊 DASHBOARD STATS
+         */
         $availableJobsCount = Job::count();
         $pendingApplicationsCount = Application::where('user_id', $userId)->count();
-        $unreadMessages = Message::where('receiver_id', $userId)->count();
+        $unreadMessages = Message::where('receiver_id', $userId)
+            ->where('is_read', false)
+            ->count();
         $averageRating = Review::where('worker_id', $userId)->avg('rating');
 
-        // 💡 AI Recommended Jobs
+        /**
+         * 🌟 SMART JOB RECOMMENDATION (Skill-Based)
+         */
         $recommendedJobs = collect();
+
         if ($worker && !empty($worker->skills)) {
-            try {
-                $response = Http::post('https://workbridge-bc3m.onrender.com/predict_job', [
-                    'description' => $worker->skills
-                ]);
+            // Split skills by comma and clean
+            $skills = array_map('trim', explode(',', strtolower($worker->skills)));
 
-                if ($response->successful()) {
-                    $data = $response->json();
-                    $apiJobs = $data['recommended_jobs'] ?? [];
-
-                    if (!empty($apiJobs)) {
-                        $recommendedJobs = Job::where(function ($q) use ($apiJobs) {
-                            foreach ($apiJobs as $job) {
-                                $q->orWhere('title', 'like', "%{$job['job_title']}%")
-                                  ->orWhere('description', 'like', "%{$job['job_title']}%");
-                            }
-                        })->take(5)->get();
+            // Search for jobs that match any skill in description or required skills
+            $recommendedJobs = Job::where(function ($query) use ($skills) {
+                    foreach ($skills as $skill) {
+                        $query->orWhere('skills_required', 'LIKE', "%{$skill}%")
+                              ->orWhere('description', 'LIKE', "%{$skill}%");
                     }
-                }
-            } catch (\Exception $e) {
-                $recommendedJobs = collect();
-            }
+                })
+                ->where('status', 'pending')
+                ->latest()
+                ->take(6)
+                ->get();
         }
 
+        /**
+         * 🔁 Return Dashboard View
+         */
         return view('dashboard.worker', compact(
             'worker',
             'profileIncomplete',
@@ -76,36 +88,80 @@ class WorkerController extends Controller
         ));
     }
 
-    // Other methods unchanged
-    public function appliedJobs() {
-        $applications = Application::with('job')->where('user_id', Auth::id())->get();
+    /**
+     * 💼 View Applied Jobs
+     */
+    public function appliedJobs()
+    {
+        $applications = Application::with('job')
+            ->where('user_id', Auth::id())
+            ->get();
+
         return view('worker.applied-jobs', compact('applications'));
     }
 
-    public function applications() {
-        $applications = Application::with('job')->where('user_id', Auth::id())->get();
+    /**
+     * 📄 View Applications
+     */
+    public function applications()
+    {
+        $applications = Application::with('job')
+            ->where('user_id', Auth::id())
+            ->get();
+
         return view('worker.applications', compact('applications'));
     }
 
-    public function profile() { return view('worker.profile'); }
-    public function ratings() { return view('worker.ratings'); }
-    public function settings() { return view('worker.settings'); }
+    /**
+     * 👤 Worker Profile Page
+     */
+    public function profile()
+    {
+        return view('worker.profile');
+    }
 
-    public function searchJobs(Request $request) {
+    /**
+     * ⭐ Worker Ratings Page
+     */
+    public function ratings()
+    {
+        return view('worker.ratings');
+    }
+
+    /**
+     * ⚙️ Worker Settings Page
+     */
+    public function settings()
+    {
+        return view('worker.settings');
+    }
+
+    /**
+     * 🔍 Job Search (AJAX)
+     */
+    public function searchJobs(Request $request)
+    {
         $term = $request->get('term');
+
         $jobs = Job::query()
-            ->when($term, function($q) use ($term) {
+            ->when($term, function ($q) use ($term) {
                 $q->where('title', 'like', "%{$term}%")
                   ->orWhere('description', 'like', "%{$term}%")
                   ->orWhere('location', 'like', "%{$term}%");
             })
             ->orderBy('created_at', 'desc')
             ->get();
+
         return view('partials.search-results', compact('jobs'))->render();
     }
 
-    public function saveProfile(Request $request) {
+    /**
+     * 💾 Save Worker Profile
+     */
+    public function saveProfile(Request $request)
+    {
         $userId = Auth::id();
+
         $request->validate([
             'skills' => 'required|string|max:255',
             'experience' => 'required|string|max:255',
@@ -120,23 +176,34 @@ class WorkerController extends Controller
         if ($request->hasFile('photo')) {
             $worker->photo = $request->file('photo')->store('profiles', 'public');
         }
+
         if ($request->hasFile('resume')) {
             $worker->resume = $request->file('resume')->store('resumes', 'public');
         }
 
         $worker->save();
-        return redirect()->route('worker.profile')->with('success', 'Profile saved successfully!');
+
+        return redirect()
+            ->route('worker.profile')
+            ->with('success', 'Profile saved successfully!');
     }
 
-    public function findJobs(Request $request) {
+    /**
+     * 🔎 Find Jobs (Normal Page)
+     */
+    public function findJobs(Request $request)
+    {
         $query = $request->input('query');
+
         $jobs = Job::where('status', 'pending')
-            ->when($query, function($q) use ($query) {
+            ->when($query, function ($q) use ($query) {
                 $q->where('title', 'like', "%{$query}%")
                   ->orWhere('description', 'like', "%{$query}%")
                   ->orWhere('location', 'like', "%{$query}%");
             })
+            ->latest()
             ->get();
+
         return view('worker.find-jobs', compact('jobs'));
     }
 }
