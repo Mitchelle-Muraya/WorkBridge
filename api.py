@@ -1,13 +1,25 @@
 # api.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import joblib
-import numpy as np
-import pandas as pd
-import os
+import joblib, numpy as np, pandas as pd, os, mysql.connector
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
+from dotenv import load_dotenv
 
 # --------------------------
-# Load trained model + vectorizer
+# Load environment variables
+# --------------------------
+load_dotenv()  # reads .env file
+DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
+DB_PORT = int(os.getenv("DB_PORT", 3306))
+DB_USER = os.getenv("FLASK_DB_USER", "flaskuser")
+DB_PASS = os.getenv("FLASK_DB_PASS", "12345")
+DB_NAME = os.getenv("DB_DATABASE", "workbridge")
+
+print(f"🔌 Connecting to MySQL at {DB_HOST}:{DB_PORT} using user {DB_USER}")
+
+# --------------------------
+# Load trained ML model + vectorizer
 # --------------------------
 model = joblib.load("random_forest_model.pkl")
 vectorizer = joblib.load("tfidf_vectorizer.pkl")
@@ -31,10 +43,7 @@ custom_replacements = {
     "security": "security guard watchman protection patrol safety",
 }
 
-informal_keywords = list(custom_replacements.keys())
-
 def expand_text(text: str) -> str:
-    """Expand text with domain-specific context."""
     text = text.lower().strip()
     expanded = text
     for kw, replacement in custom_replacements.items():
@@ -44,99 +53,105 @@ def expand_text(text: str) -> str:
 
 
 # --------------------------
-# Flask App Setup
+# Flask setup
 # --------------------------
 app = Flask(__name__)
 CORS(app)
 
-
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({
-        "message": "✅ WorkBridge ML API is running successfully!",
-        "usage": "Send a POST request to /predict_job or /recommend_workers."
+        "message": "✅ WorkBridge ML API (Dynamic Worker Matching) is running successfully!",
+        "usage": "POST to /predict_job or /recommend_workers"
     })
 
 
+# -------------------------------------------------
+# 🧠 Predict job category
+# -------------------------------------------------
 @app.route("/predict_job", methods=["POST"])
 def predict_job():
-    """Handles both worker-skill and job-description inputs intelligently."""
     try:
         data = request.get_json()
         if not data or "description" not in data:
             return jsonify({"error": "Missing 'description' field"}), 400
 
         desc = data["description"].lower().strip()
-        expanded_desc = expand_text(desc)
+        expanded = expand_text(desc)
 
-        # --- ML Prediction ---
-        X_vec = vectorizer.transform([expanded_desc])
+        X_vec = vectorizer.transform([expanded])
         probs = model.predict_proba(X_vec)[0]
         pred_class = model.classes_[np.argmax(probs)]
-        confidence = {
-            label: round(float(prob), 2)
-            for label, prob in zip(model.classes_, probs)
-        }
+        confidence = {label: round(float(p), 2) for label, p in zip(model.classes_, probs)}
 
-        # --- Decide Response Type ---
-        if any(word in desc for word in ["need", "hire", "looking for", "job", "worker", "technician", "fix"]):
-            # Client posting a job → Recommend workers
-            recommended_workers = []
-            for kw in informal_keywords:
-                if kw in desc:
-                    recommended_workers.append(kw.title() + " (Skilled Worker)")
-            if not recommended_workers:
-                recommended_workers = ["No matches found"]
-
-            return jsonify({
-                "description": desc,
-                "predicted_category": pred_class,
-                "confidence": confidence,
-                "recommended_workers": recommended_workers,
-                "source": "client_job"
-            })
-
-        else:
-            # Worker skills → Recommend jobs
-            recommended_jobs = []
-            for kw in informal_keywords:
-                if kw in desc:
-                    recommended_jobs.append({
-                        "job_title": f"{kw.title()} Required for Local Project",
-                        "category": "Informal"
-                    })
-            if not recommended_jobs:
-                recommended_jobs = [{"job_title": "No matches found", "category": "None"}]
-
-            return jsonify({
-                "description": desc,
-                "predicted_category": pred_class,
-                "confidence": confidence,
-                "recommended_jobs": recommended_jobs,
-                "source": "worker_profile"
-            })
-
+        return jsonify({
+            "description": desc,
+            "predicted_category": pred_class,
+            "confidence": confidence
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-# ✅ NEW: Recommend Workers API
-@app.route('/recommend_workers', methods=['POST'])
+# -------------------------------------------------
+# 🤖 Recommend Workers (live DB)
+# -------------------------------------------------
+@app.route("/recommend_workers", methods=["POST"])
 def recommend_workers():
-    data = request.json
-    job_skills = data.get('skills', '')
+    data = request.get_json()
+    job_skills = data.get("skills", "")
 
     try:
-        # Example: Match job_skills with workers' skills in dataset
-        workers_df = pd.read_csv('workers_dataset.csv')  # columns: id, name, skills
-        matches = workers_df[workers_df['skills'].str.contains(job_skills, case=False, na=False)]
+        # ✅ Connect to MySQL (Laravel DB)
+        db = mysql.connector.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            user=DB_USER,
+            password=DB_PASS,
+            database=DB_NAME
+        )
+        print("✅ Connected to MySQL successfully.")
+        print(f"📋 Job skills received: {job_skills}")
 
-        # Return top 5 best-fit workers
-        recommended = matches.head(5).to_dict(orient='records')
-        return jsonify({'recommended_workers': recommended})
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT u.id, u.name AS worker_name, w.skills, w.location, w.experience
+            FROM workers w
+            INNER JOIN users u ON u.id = w.user_id
+        """)
+        workers = cursor.fetchall()
+        print(f"✅ Retrieved {len(workers)} workers from DB.")
+        cursor.close()
+        db.close()
+
+        if not workers:
+            return jsonify({"recommended_workers": []})
+
+        df = pd.DataFrame(workers)
+        df["skills_cleaned"] = df["skills"].fillna("").apply(lambda s: s.replace(",", " ").lower())
+        job_skills_cleaned = job_skills.replace(",", " ").lower()
+
+        tfidf = TfidfVectorizer(stop_words="english")
+        tfidf_matrix = tfidf.fit_transform(df["skills_cleaned"])
+        job_vec = tfidf.transform([job_skills_cleaned])
+        similarity_scores = cosine_similarity(job_vec, tfidf_matrix).flatten()
+
+        df["match_score"] = similarity_scores
+        df = df.sort_values(by=["match_score", "experience"], ascending=False)
+        df = df[df["match_score"] > 0.0]
+
+        recommended = df.head(5).to_dict(orient="records")
+        print(f"✨ Recommended top {len(recommended)} workers.")
+
+        return jsonify({"recommended_workers": recommended})
+
+    except mysql.connector.Error as db_err:
+        print(f"❌ Database Error: {db_err}")
+        return jsonify({"error": str(db_err)}), 500
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"❌ General Error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 # --------------------------
@@ -144,4 +159,5 @@ def recommend_workers():
 # --------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
+    print(f"🚀 Starting Flask on port {port} ...")
     app.run(host="0.0.0.0", port=port)

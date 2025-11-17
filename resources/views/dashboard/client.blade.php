@@ -391,18 +391,21 @@ input:checked + .slider:before {
     <i class="bi bi-plus-circle"></i> Post Job
   </a>
 
-  @if(!empty($recommended))
-
+ @if(!empty($recommended) && count($recommended) > 0)
   <div class="mt-4 px-3">
     <h5 class="text-white mb-2">👷 Recommended Workers</h5>
     <ul class="list-unstyled mb-0">
-        @foreach($recommended as $worker)
-
-              <li>- {{ $worker }}</li>
+      @foreach($recommended as $worker)
+        <li>- {{ $worker['name'] ?? $worker['worker_name'] ?? 'Unknown' }}</li>
       @endforeach
     </ul>
   </div>
-  @endif
+@else
+  <div class="mt-4 px-3 text-white-50 small">
+    <em>No AI recommendations yet.</em>
+  </div>
+@endif
+
 
   <a href="{{ route('client.my-jobs') }}">
     <i class="bi bi-briefcase"></i> My Jobs
@@ -465,7 +468,7 @@ input:checked + .slider:before {
     </div>
   </div>
 <!-- 🌟 AI-Recommended Workers Section -->
-@if(session('recommended_workers') && count(session('recommended_workers')) > 0)
+@if(!empty($recommended) && count($recommended) > 0)
   <div class="mt-5 p-4 rounded-4 shadow-sm"
        style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff;">
     <h4 class="fw-bold mb-3">
@@ -477,41 +480,37 @@ input:checked + .slider:before {
 
     <div class="row">
       @foreach($recommended as $worker)
-
         <div class="col-md-6 col-lg-4 mb-4">
           <div class="card border-0 shadow h-100 rounded-4 overflow-hidden">
             <div class="card-body text-dark bg-light">
               <div class="d-flex align-items-center mb-3">
-                <img src="{{ $worker['photo'] }}" class="rounded-circle me-3" width="55" height="55" alt="Worker Photo">
+                <img src="{{ $worker['photo'] ?? 'https://ui-avatars.com/api/?name=' . urlencode($worker['name'] ?? 'Worker') }}"
+                     class="rounded-circle me-3" width="55" height="55" alt="Worker Photo">
                 <div>
-                  <h6 class="fw-bold mb-1">{{ $worker['name'] }}</h6>
+                  <h6 class="fw-bold mb-1">{{ $worker['name'] ?? $worker['worker_name'] ?? 'Unknown' }}</h6>
                   <small class="text-muted">
-                    <i class="bi bi-geo-alt"></i> {{ $worker['location'] }}
+                    <i class="bi bi-geo-alt"></i> {{ $worker['location'] ?? 'Nairobi, Kenya' }}
                   </small>
                 </div>
               </div>
 
               <p class="text-muted small mb-2">
                 <i class="bi bi-tools me-1"></i>
-                <strong>Skills:</strong> {{ $worker['skills'] }}
+                <strong>Skills:</strong> {{ $worker['skills'] ?? 'N/A' }}
               </p>
 
-              <!-- ⭐ Rating -->
               <div class="mb-3">
                 @for($i = 1; $i <= 5; $i++)
-                  <i class="bi {{ $i <= $worker['rating'] ? 'bi-star-fill text-warning' : 'bi-star text-secondary' }}"></i>
+                  <i class="bi {{ $i <= ($worker['rating'] ?? 0) ? 'bi-star-fill text-warning' : 'bi-star text-secondary' }}"></i>
                 @endfor
-                <small class="text-muted">({{ $worker['rating'] }} / 5)</small>
+                <small class="text-muted">({{ $worker['rating'] ?? 0 }} / 5)</small>
               </div>
 
-              <!-- ✉️ Buttons -->
               <div class="d-flex justify-content-between">
-                <a href="{{ route('messages.index') }}"
-                   class="btn btn-outline-info btn-sm fw-semibold">
+                <a href="{{ route('messages.index') }}" class="btn btn-outline-info btn-sm fw-semibold">
                   <i class="bi bi-chat-dots"></i> Message
                 </a>
-                <a href="{{ route('client.applications') }}"
-                   class="btn btn-outline-light btn-sm fw-semibold">
+                <a href="{{ route('client.applications') }}" class="btn btn-outline-light btn-sm fw-semibold">
                   <i class="bi bi-briefcase"></i> Hire Now
                 </a>
               </div>
@@ -520,6 +519,10 @@ input:checked + .slider:before {
         </div>
       @endforeach
     </div>
+  </div>
+@else
+  <div class="alert alert-info text-center my-4">
+    <i class="bi bi-info-circle"></i> No AI-recommended workers yet.
   </div>
 @endif
 
@@ -574,33 +577,7 @@ input:checked + .slider:before {
             </form>
 
           @elseif($app->status == 'accepted')
-            {{-- 🔮 AI RECOMMENDED WORKERS --}}
-            @if(session('recommended_workers') && count(session('recommended_workers')) > 0)
-              <div class="mt-4 p-4 rounded-3"
-                   style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff;">
-                <h5 class="fw-bold mb-3">
-                  <i class="bi bi-stars me-2"></i> Recommended Workers for Your Latest Job
-                </h5>
 
-                <div class="row">
-                  @foreach($recommended as $worker)
-                    <div class="col-md-6 col-lg-4 mb-3">
-                      <div class="application-card text-dark bg-light shadow-sm border-0 h-100 p-3">
-                        <h6 class="fw-semibold mb-2 text-primary">
-                          <i class="bi bi-person-badge me-1"></i> {{ $worker }}
-                        </h6>
-                        <p class="text-muted small mb-2">
-                          Based on your job’s description and skills required.
-                        </p>
-                        <a href="{{ route('client.applications') }}" class="btn btn-sm btn-outline-info">
-                          <i class="bi bi-envelope-open"></i> View Applicants
-                        </a>
-                      </div>
-                    </div>
-                  @endforeach
-                </div>
-              </div>
-            @endif
 
             <!-- ✅ Chat button (only for accepted jobs) -->
             <a href="#"

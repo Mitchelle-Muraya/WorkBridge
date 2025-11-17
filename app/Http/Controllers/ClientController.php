@@ -12,7 +12,7 @@ use App\Models\Client;
 class ClientController extends Controller
 {
     /**
-     * 🏠 CLIENT DASHBOARD (redirects here after posting a job)
+     * 🏠 CLIENT DASHBOARD
      */
     public function index()
     {
@@ -27,14 +27,16 @@ class ClientController extends Controller
         $clientId = $client->id;
 
         $totalJobs = Job::where('client_id', $clientId)->count();
-        $jobsInProgress = Job::where('client_id', $clientId)->where('status', 'in_progress')->count();
-        $completedJobs = Job::where('client_id', $clientId)->where('status', 'completed')->count();
+        $jobsInProgress = Job::where('client_id', $clientId)
+            ->where('status', 'in_progress')->count();
+        $completedJobs = Job::where('client_id', $clientId)
+            ->where('status', 'completed')->count();
 
         $applications = Application::whereHas('job', function ($q) use ($clientId) {
             $q->where('client_id', $clientId);
         })->with(['user', 'job'])->latest()->take(5)->get();
 
-        // Fetch recommended workers (if any)
+        // 🧠 Load any previously saved recommendations
         $recommended = json_decode($client->recommended_workers ?? '[]', true);
 
         return view('dashboard.client', compact(
@@ -68,7 +70,7 @@ class ClientController extends Controller
             $user->update(['mode' => 'client']);
         }
 
-        // ✅ Merge skills (array + "other_skill")
+        // ✅ Combine skills and "other_skill"
         $skills = $request->input('skills_required', []);
         if ($request->filled('other_skill')) {
             $skills[] = $request->input('other_skill');
@@ -85,44 +87,50 @@ class ClientController extends Controller
             'location' => 'required|string|max:255',
         ]);
 
-        // ✅ Add extra fields
+        // ✅ Add additional job fields
         $validated['skills_required'] = $skillsString;
         $validated['client_id'] = $client->id;
         $validated['user_id'] = $user->id;
         $validated['status'] = 'pending';
 
-        // ✅ Save job
+        // ✅ Save the job in DB
         $job = Job::create($validated);
 
-        // ✅ Get AI-recommended workers
+
         try {
-            $response = Http::post('http://127.0.0.1:5000/recommend_workers', [
+            $response = Http::post('http://127.0.0.1:10000/recommend_workers', [
                 'skills' => $validated['skills_required']
             ]);
 
             if ($response->successful()) {
-                $recommended = $response->json()['recommended_workers'];
+                $data = $response->json();
+\Log::info('FLASK RESPONSE:', $data);
 
-                // Map and clean
+                // Expecting structure: { "recommended_workers": [ ... ] }
+                $recommended = $data['recommended_workers'] ?? [];
+
+                // Map and clean up worker data
                 $workers = collect($recommended)->map(function ($w) {
                     return [
-                        'name' => $w['name'] ?? $w,
+                        'name' => $w['worker_name'] ?? $w['name'] ?? 'Unnamed Worker',
                         'skills' => $w['skills'] ?? 'N/A',
-                        'photo' => $w['photo'] ?? null,
+                        'photo' => $w['photo'] ?? 'https://ui-avatars.com/api/?name=' . urlencode($w['worker_name'] ?? 'Worker'),
                         'location' => $w['location'] ?? 'Nairobi, Kenya',
-                        'rating' => rand(3, 5)
+                        'rating' => rand(3, 5),
                     ];
                 });
 
-                // Save permanently in DB
+                // Save permanently in client record
                 $client->recommended_workers = json_encode($workers);
                 $client->save();
+            } else {
+                \Log::warning('Flask API failed: ' . $response->body());
             }
         } catch (\Exception $e) {
             \Log::error('Worker recommendation failed: ' . $e->getMessage());
         }
 
-        // Redirect back to dashboard
+        // ✅ Redirect to dashboard
         return redirect()->route('client.dashboard')
             ->with('success', 'Job posted successfully! AI-recommended workers updated.');
     }
@@ -136,7 +144,8 @@ class ClientController extends Controller
         $client = Client::where('user_id', $userId)->first();
 
         if (!$client) {
-            return redirect()->route('dashboard')->with('error', 'Client profile not found.');
+            return redirect()->route('dashboard')
+                ->with('error', 'Client profile not found.');
         }
 
         $jobs = Job::where('client_id', $client->id)->latest()->get();
@@ -153,19 +162,22 @@ class ClientController extends Controller
         return view('client.reviews');
     }
 
+    /**
+     * 📬 VIEW JOB APPLICATIONS
+     */
     public function viewApplications()
     {
         $userId = Auth::id();
         $client = Client::where('user_id', $userId)->first();
 
         if (!$client) {
-            return redirect()->route('dashboard')->with('error', 'Client profile not found.');
+            return redirect()->route('dashboard')
+                ->with('error', 'Client profile not found.');
         }
 
-        $applications = Application::whereHas('job', fn($q) => $q->where('client_id', $client->id))
-            ->with(['user', 'job'])
-            ->latest()
-            ->get();
+        $applications = Application::whereHas('job', fn($q) =>
+            $q->where('client_id', $client->id)
+        )->with(['user', 'job'])->latest()->get();
 
         return view('client.applications', compact('applications'));
     }
