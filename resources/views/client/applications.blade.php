@@ -119,7 +119,7 @@
             <form class="review-form">
               @csrf
               <input type="hidden" name="job_id" value="{{ $app->job->id }}">
-              <input type="hidden" name="worker_id" value="{{ $app->job->worker_id }}">
+              <input type="hidden" name="worker_id" value="{{ $app->user->id }}">
 
               <div class="mb-2">
                 <label>Your Rating:</label>
