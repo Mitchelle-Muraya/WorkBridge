@@ -132,8 +132,9 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
-    Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews.index');
-    Route::post('/reviews/store', [ReviewController::class, 'store'])->name('reviews.store');
+Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews.index');
+Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+
 });
 
 /*
@@ -158,6 +159,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/client/messages', [ClientController::class, 'messages'])->name('messages.index');
     Route::get('/dashboard/client/reviews', [ClientController::class, 'reviews'])->name('client.reviews');
     Route::get('/dashboard/client', [ClientController::class, 'index'])->name('client.dashboard');
+Route::get('/dashboard/client/completed-jobs', [ClientController::class, 'completedJobs'])->name('client.completedJobs');
 
 });
 
@@ -178,18 +180,25 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/worker/settings', [WorkerController::class, 'settings'])->name('worker.settings');
     Route::get('/find-jobs', [WorkerController::class, 'findJobs'])->name('worker.findJobs');
     Route::post('/apply/{job}', [ApplicationController::class, 'apply'])->name('apply.job');
+    Route::get('/jobs/{id}', [WorkerController::class, 'showJob'])->name('jobs.show');
+
 });
+
 
 /*
 |--------------------------------------------------------------------------
 | 🧑‍💼 Admin Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+    Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
     Route::get('/workers', [AdminController::class, 'manageWorkers'])->name('workers');
     Route::get('/clients', [AdminController::class, 'manageClients'])->name('clients');
+
+    // ✅ This one should call ReportController@index, not AdminController@reports
     Route::get('/reports', [ReportController::class, 'index'])->name('reports');
+
+    // ✅ Export routes (keep only one copy)
     Route::get('/reports/export/pdf', [ReportController::class, 'exportPDF'])->name('reports.pdf');
     Route::get('/reports/export/excel', [ReportController::class, 'exportExcel'])->name('reports.excel');
 
@@ -204,7 +213,13 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('/jobs/approve/{id}', [AdminController::class, 'approveJob'])->name('jobs.approve');
     Route::post('/jobs/complete/{id}', [AdminController::class, 'completeJob'])->name('jobs.complete');
     Route::delete('/jobs/delete/{id}', [AdminController::class, 'deleteJob'])->name('jobs.delete');
+
+    // Settings view
+    Route::get('/settings', function () {
+        return view('admin.settings');
+    })->name('settings');
 });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -250,4 +265,3 @@ Route::get('/admin/settings', function () {
     return view('admin.settings');
 })->name('admin.settings');
 
-Route::get('/admin/reports/export/pdf', [App\Http\Controllers\ReportController::class, 'exportPDF'])->name('reports.pdf');

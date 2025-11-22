@@ -14,10 +14,9 @@ class Review extends Model
         'client_id',
         'worker_id',
         'rating',
-        'comment',
+        'comment'
     ];
 
-    // Relationships
     public function job()
     {
         return $this->belongsTo(Job::class);
@@ -25,7 +24,7 @@ class Review extends Model
 
     public function worker()
     {
-        return $this->belongsTo(User::class, 'worker_id');
+        return $this->belongsTo(Worker::class, 'worker_id');
     }
 
     public function client()

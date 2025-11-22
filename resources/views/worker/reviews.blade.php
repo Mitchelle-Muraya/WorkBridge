@@ -1,24 +1,26 @@
-@extends('layouts.worker')
+@extends('layouts.app')
 
 @section('content')
-<div class="content">
-  <h2 class="fw-bold mb-4"><i class="bi bi-star"></i> My Reviews</h2>
+<div class="container mt-4">
+    <h3 class="mb-4 fw-bold text-primary">⭐ My Reviews</h3>
 
-  @forelse($reviews as $review)
-    <div class="job-card mb-4">
-      <h5 class="fw-semibold">{{ $review->job->title ?? 'Unknown Job' }}</h5>
-      <p class="text-muted small mb-1">
-        <strong>From:</strong> {{ $review->client->name ?? 'Client Deleted' }}
-      </p>
-      <p class="mb-1">
-        <strong>Rating:</strong> ⭐ {{ $review->rating }}/5
-      </p>
-      <p class="text-muted">{{ $review->comment }}</p>
-    </div>
-  @empty
-    <div class="alert alert-info text-center">
-      <i class="bi bi-info-circle"></i> No reviews yet.
-    </div>
-  @endforelse
+    @if($reviews->isEmpty())
+        <p class="text-muted">You haven’t received any reviews yet.</p>
+    @else
+        @foreach($reviews as $review)
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <h5 class="fw-bold text-dark">{{ $review->client->name ?? 'Anonymous' }}</h5>
+                    <p class="mb-1 text-warning">
+                        @for($i = 1; $i <= 5; $i++)
+                            <i class="bi {{ $i <= $review->rating ? 'bi-star-fill text-warning' : 'bi-star text-secondary' }}"></i>
+                        @endfor
+                    </p>
+                    <p class="text-muted small">{{ $review->created_at->diffForHumans() }}</p>
+                    <p>{{ $review->comment }}</p>
+                </div>
+            </div>
+        @endforeach
+    @endif
 </div>
 @endsection

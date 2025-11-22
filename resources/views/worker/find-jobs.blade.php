@@ -16,55 +16,41 @@
 <!-- Results will appear here -->
 <div id="searchResults">
   @foreach($jobs as $job)
-      <div class="card job-card border-0 shadow-sm mb-3">
-          <div class="card-body">
-              <h5 class="fw-bold text-primary">{{ $job->title }}</h5>
-              <p class="text-muted small mb-1">{{ $job->location }}</p>
-              <p>{{ Str::limit($job->description, 100) }}</p>
-              <form action="{{ route('apply.job', $job->id) }}" method="POST">
-                  @csrf
-                  <button type="submit" class="btn btn-success w-100 mt-2">
-                      Apply
-                  </button>
-              </form>
+      <a href="{{ route('jobs.show', $job->id) }}" class="text-decoration-none text-dark">
+          <div class="card job-card border-0 shadow-sm mb-3">
+              <div class="card-body">
+                  <h5 class="fw-bold text-primary mb-1">{{ $job->title }}</h5>
+                  <p class="text-muted small mb-1">{{ ucfirst($job->location) }}</p>
+                  <p class="mb-0">{{ Str::limit($job->description, 100) }}</p>
+                  <div class="text-end mt-2">
+                      <span class="text-success small fw-semibold">View Details →</span>
+                  </div>
+              </div>
           </div>
-      </div>
+      </a>
   @endforeach
 </div>
 
 <style>
   body {
-    background-color: var(--bg-color);
-    color: var(--text-color);
+    background-color: #f8f9fa;
   }
-
   .job-card {
-    border-radius: 16px;
-    background-color: var(--card-bg);
-    transition: transform 0.2s ease, box-shadow 0.3s ease;
-  }
-
-  .job-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-  }
-
-  .form-control {
-    background-color: var(--input-bg);
-    color: var(--text-color);
-    border: 1px solid #ccc;
-  }
-
-  .btn-success {
     border-radius: 10px;
-    font-weight: 600;
+    transition: 0.2s ease-in-out;
+    cursor: pointer;
   }
-
-  [data-theme="dark"] .btn-success {
-    background-color: #45a29e;
-    border-color: #45a29e;
+  .job-card:hover {
+    transform: scale(1.01);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    background-color: #ffffff;
+  }
+  .card-body {
+    padding: 1rem 1.2rem;
   }
 </style>
+
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>

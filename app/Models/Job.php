@@ -32,4 +32,10 @@ class Job extends Model
     {
         return $this->hasMany(Application::class);
     }
+   public function worker()
+{
+    return $this->belongsTo(\App\Models\Worker::class, 'worker_id');
+}
+
+
 }

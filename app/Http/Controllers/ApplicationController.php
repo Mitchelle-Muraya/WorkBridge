@@ -18,7 +18,7 @@ class ApplicationController extends Controller
     {
         $userId = Auth::id();
 
-        // ✅ 1. Prevent duplicate applications
+        // ✅ Prevent duplicate applications
         $exists = Application::where('user_id', $userId)
             ->where('job_id', $id)
             ->exists();
@@ -27,7 +27,7 @@ class ApplicationController extends Controller
             return back()->with('info', 'You have already applied for this job.');
         }
 
-        // ✅ 2. Create the application
+        // ✅ Create new application
         $application = Application::create([
             'user_id' => $userId,
             'job_id' => $id,
@@ -35,40 +35,42 @@ class ApplicationController extends Controller
             'status' => 'pending',
         ]);
 
-        // ✅ 3. Send notification to the job owner (client)
+        // ✅ Notify the job owner (client)
         $job = Job::find($id);
         if ($job && $job->client_id) {
-            $client = User::find($job->client_id);
-
-            if ($client) {
-                Notification::create([
-                    'user_id' => $client->id,
-                    'title' => 'New Job Application',
-                    'message' => Auth::user()->name . ' has applied for your job "' . $job->title . '".',
-                ]);
-            }
+            Notification::create([
+                'user_id' => $job->client_id,
+                'title' => 'New Job Application',
+                'message' => Auth::user()->name . ' has applied for your job "' . $job->title . '".',
+            ]);
         }
 
-        // ✅ 4. Redirect back with success message
         return back()->with('success', '✅ Application submitted successfully!');
     }
 
     /**
-     * Update status (accept/reject)
+     * Update application status (accept / reject)
      */
     public function updateStatus(Request $request, $id)
-    {
-        $application = Application::findOrFail($id);
-        $application->status = $request->status;
-        $application->save();
+{
+    $application = Application::findOrFail($id);
+    $application->status = $request->status;
+    $application->save();
 
-        // ✅ Notify the worker who applied
-        Notification::create([
-            'user_id' => $application->user_id,
-            'title' => 'Job Application ' . ucfirst($request->status),
-            'message' => 'Your application for "' . $application->job->title . '" has been ' . $request->status . '.',
+    if ($request->status === 'accepted') {
+        $application->job->update([
+            'worker_id' => $application->user_id, // ✅ link job to the accepted worker
+            'status' => 'in_progress',
         ]);
-
-        return back()->with('success', 'Application ' . $request->status . ' successfully.');
     }
+
+    Notification::create([
+        'user_id' => $application->user_id,
+        'title' => 'Job Application ' . ucfirst($request->status),
+        'message' => 'Your application for "' . $application->job->title . '" has been ' . $request->status . '.',
+    ]);
+
+    return back()->with('success', 'Application ' . $request->status . ' successfully.');
+}
+
 }

@@ -21,9 +21,15 @@ class Worker extends Model
     {
         return $this->belongsTo(User::class);
     }
-    public function reviews()
+   public function reviews()
 {
-    return $this->hasMany(\App\Models\Review::class, 'worker_id');
+    return $this->hasMany(Review::class, 'worker_id');
 }
+
+public function averageRating()
+{
+    return $this->reviews()->avg('rating');
+}
+
 
 }

@@ -29,11 +29,17 @@ class JobController extends Controller
     }
 
     // MARK JOB AS COMPLETE
-    public function complete($id)
-    {
-        $job = Job::findOrFail($id);
-        $job->update(['status' => 'completed']);
+   public function complete($id)
+{
+    $job = Job::findOrFail($id);
+    $job->update(['status' => 'completed']);
 
-        return back()->with('success', 'Job marked as completed!');
-    }
+    return response()->json([
+        'success' => true,
+        'message' => '✅ Job marked as completed successfully!',
+        'job_id' => $job->id,
+        'worker_id' => $job->worker_id
+    ]);
+}
+
 }

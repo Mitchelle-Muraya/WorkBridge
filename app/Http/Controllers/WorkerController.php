@@ -204,6 +204,25 @@ class WorkerController extends Controller
             ->latest()
             ->get();
 
-        return view('worker.findJobs', compact('jobs'));
-    }
+      return view('worker.find-jobs', compact('jobs'));
+        }
+        public function showJob($id)
+{
+    $job = Job::findOrFail($id);
+    return view('worker.job-details', compact('job'));
+}
+
+public function reviews()
+{
+    $workerId = auth()->id();
+
+    // Fetch all reviews related to this worker
+    $reviews = \App\Models\Review::where('worker_id', $workerId)
+        ->with(['client'])
+        ->latest()
+        ->get();
+
+    return view('worker.reviews', compact('reviews'));
+}
+
 }

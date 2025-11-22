@@ -171,6 +171,11 @@
         </div>
       </div>
     </nav>
+    @php
+  $start = $start ?? null;
+  $end = $end ?? null;
+@endphp
+
 
     @yield('content')
   </div>

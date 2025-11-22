@@ -21,32 +21,29 @@ class LoginController extends Controller
      */
     public function login(Request $request)
     {
-        // Validate input
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
+        // ✅ Validate inputs
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
         ]);
 
-        // Attempt login using default guard (web)
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
+        $credentials = $request->only('email', 'password');
 
+        // ✅ Attempt login
+        if (Auth::attempt($credentials)) {
             $user = Auth::user();
 
-            // Redirect based on user role
-            switch ($user->role) {
-                case 'worker':
-                    return redirect()->route('worker.dashboard')->with('success', 'Welcome back, Worker!');
-                case 'client':
-                    return redirect()->route('client.dashboard')->with('success', 'Welcome back, Client!');
-                case 'admin':
-                    return redirect()->route('admin.dashboard')->with('success', 'Welcome Admin!');
-                default:
-                    return redirect('/')->with('info', 'Welcome back!');
+            // ✅ Redirect based on role
+            if ($user->role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            } elseif ($user->role === 'client') {
+                return redirect()->route('client.dashboard');
+            } else {
+                return redirect()->route('worker.dashboard');
             }
         }
 
-        // If login fails
+        // ❌ Login failed
         return back()->withErrors([
             'email' => 'Invalid email or password.',
         ])->onlyInput('email');

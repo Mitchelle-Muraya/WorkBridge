@@ -77,12 +77,21 @@ $topWorkers = \App\Models\Review::select('worker_id')
         'topWorkers'
     ));
 }
- // 🧍‍♀️ Manage Users
-    public function manageUsers()
-    {
-        $users = User::all(); // fetch all registered users
-        return view('admin.users', compact('users'));
-    }
+ public function manageUsers()
+{
+    // Fetch all registered users
+    $users = \App\Models\User::all();
+
+    // (Optional) If you want to show some user stats
+    $userStats = [
+        'worker' => \App\Models\User::where('role', 'worker')->count(),
+        'client' => \App\Models\User::where('role', 'client')->count(),
+    ];
+
+    // Return users view with both variables
+    return view('admin.users', compact('users', 'userStats'));
+}
+
 
     // 💼 Manage Jobs
     public function manageJobs()

@@ -186,4 +186,14 @@ class ClientController extends Controller
     {
         return $this->viewApplications();
     }
+   public function completedJobs()
+{
+    $completedJobs = \App\Models\Job::where('client_id', auth()->id())
+        ->where('status', 'completed')
+        ->with('worker.user')
+        ->get();
+
+    return view('client.completed-jobs', compact('completedJobs'));
+}
+
 }

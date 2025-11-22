@@ -7,11 +7,14 @@
     <i class="bi bi-bar-chart-line me-2"></i> Admin Reports Dashboard
   </h2>
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <form method="GET" class="d-flex gap-2">
-    <input type="date" name="start_date" value="{{ $start }}" class="form-control form-control-sm">
-    <input type="date" name="end_date" value="{{ $end }}" class="form-control form-control-sm">
+ @isset($start)
+<form method="GET" class="d-flex gap-2">
+    <input type="date" name="start_date" value="{{ $start ?? '' }}" class="form-control form-control-sm">
+    <input type="date" name="end_date" value="{{ $end ?? '' }}" class="form-control form-control-sm">
     <button class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Filter</button>
-  </form>
+</form>
+@endisset
+
 
   <div class="btn-group">
     <a href="{{ route('admin.reports.pdf') }}" class="btn btn-danger btn-sm"><i class="bi bi-file-earmark-pdf"></i> Export PDF</a>
@@ -91,10 +94,11 @@ new Chart(document.getElementById('applicationsChart'), {
         datasets: [{
             label: 'Applications',
             data: [
-                $applicationData['pending'] ,
- $applicationData['accepted'] ,
- $applicationData['rejected']
-            ],
+  $applicationData['pending'],
+  $applicationData['approved'],
+  $applicationData['rejected']
+],
+
             backgroundColor: ['#00B3FF', '#00C9A7', '#FFB703'],
         }]
     },

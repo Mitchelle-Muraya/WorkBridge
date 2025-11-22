@@ -571,9 +571,10 @@
               <i class="bi bi-geo-alt"></i> {{ $job->location ?? 'Location not specified' }}
             </p>
             <p>{{ Str::limit($job->description, 100) }}</p>
-            <a href="{{ route('worker.findJobs') }}" class="btn btn-apply mt-2 w-100">
-              View Job
-            </a>
+            <a href="{{ route('jobs.show', $job->id) }}" class="btn btn-primary w-100 mt-2" style="border-radius: 8px;">
+    View Job
+</a>
+
           </div>
         </div>
       @endforeach
