@@ -115,55 +115,26 @@ class DashboardController extends Controller
     /**
      * ✅ ACCEPT APPLICATION
      */
-    public function acceptApplication($applicationId)
-    {
-        $application = Application::findOrFail($applicationId);
-        $application->status = 'accepted';
-        $application->save();
+    public function acceptApplication(Application $application)
+{
+    $application->update(['status' => 'accepted']);
 
-        $job = Job::find($application->job_id);
-        if ($job) {
-            $job->status = 'in_progress';
-            $job->save();
-        }
+    // Notify the worker
+    $application->user->update(['application_notification' => 1]);
 
-        // Notify worker
-        Notification::create([
-            'user_id' => $application->user_id,
-            'title' => 'Application Accepted',
-            'message' => 'Your application for "' . $job->title . '" has been accepted.',
-        ]);
+    return back()->with('success', 'Application accepted.');
+}
 
-        // Notify client (confirmation)
-        Notification::create([
-            'user_id' => $job->user_id,
-            'title' => 'Application Approved',
-            'message' => 'You accepted ' . $application->user->name . '\'s application for "' . $job->title . '".',
-        ]);
+public function rejectApplication(Application $application)
+{
+    $application->update(['status' => 'rejected']);
 
-        return back()->with('success', '✅ Application accepted successfully!');
-    }
+    // Notify the worker
+    $application->user->update(['application_notification' => 1]);
 
-    /**
-     * ❌ REJECT APPLICATION
-     */
-    public function rejectApplication($applicationId)
-    {
-        $application = Application::findOrFail($applicationId);
-        $application->status = 'rejected';
-        $application->save();
+    return back()->with('success', 'Application rejected.');
+}
 
-        $job = Job::find($application->job_id);
-
-        // Notify worker
-        Notification::create([
-            'user_id' => $application->user_id,
-            'title' => 'Application Rejected',
-            'message' => 'Your application for "' . $job->title . '" has been rejected.',
-        ]);
-
-        return back()->with('error', '❌ Application rejected.');
-    }
 
     /**
      * 🗑️ DELETE A JOB

@@ -7,151 +7,136 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Message;
 use App\Models\Notification;
 use App\Models\User;
+use App\Events\MessageSent; // <-- IMPORTANT
 
 class ChatController extends Controller
 {
-    /**
-     * 📨 Show chat between client & worker for a given job
-     */
-    public function showChat($jobId, $receiverId)
+    public function index()
     {
-        $messages = Message::where(function ($q) use ($jobId, $receiverId) {
-                $q->where('sender_id', Auth::id())
-                  ->where('receiver_id', $receiverId);
-            })
-            ->orWhere(function ($q) use ($jobId, $receiverId) {
-                $q->where('sender_id', $receiverId)
-                  ->where('receiver_id', Auth::id());
-            })
-            ->where('job_id', $jobId)
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        return view('chat.index', compact('messages', 'receiverId', 'jobId'));
+        return view('messages.index', [
+            'messages' => [],
+            'receiverId' => null,
+            'jobId' => null,
+            'autoOpen' => false
+        ]);
     }
 
-    /**
-     * 💬 Send new message
-     */
+    public function startChat($jobId, $receiverId)
+    {
+        $receiver = User::find($receiverId);
+
+        return view('messages.index', [
+            'messages' => [],
+            'receiverId' => $receiverId,
+            'jobId' => $jobId,
+            'receiverName' => $receiver->name,
+            'receiverAvatar' => "https://ui-avatars.com/api/?name=" . urlencode($receiver->name) . "&background=00b3ff&color=fff",
+            'autoOpen' => true,
+        ]);
+    }
+
+    public function fetch($jobId, $receiverId)
+    {
+        $messages = Message::where('job_id', $jobId)
+            ->where(function ($q) use ($receiverId) {
+                $q->where(function ($x) use ($receiverId) {
+                    $x->where('sender_id', Auth::id())
+                      ->where('receiver_id', $receiverId);
+                })
+                ->orWhere(function ($x) use ($receiverId) {
+                    $x->where('sender_id', $receiverId)
+                      ->where('receiver_id', Auth::id());
+                });
+            })
+            ->orderBy("created_at", "asc")
+            ->get();
+
+        return response()->json($messages);
+    }
+
     public function send(Request $request)
     {
-        $request->validate(['message' => 'required|string|max:1000']);
+        $request->validate([
+            'message' => 'required|string|max:1000'
+        ]);
 
+        // ✔ Save message
         $msg = Message::create([
             'sender_id' => Auth::id(),
             'receiver_id' => $request->receiver_id,
             'job_id' => $request->job_id,
             'message' => $request->message,
+            'is_read' => 0
         ]);
 
-        // Create notification for receiver
+        // ✔ Broadcast in REAL TIME
+        event(new MessageSent($msg));
+
+        // ✔ Create notification
         Notification::create([
             'user_id' => $request->receiver_id,
             'title' => 'New Message',
             'message' => Auth::user()->name . ': ' . substr($request->message, 0, 40),
         ]);
 
-        return response()->json(['success' => true, 'message' => $msg]);
+        return response()->json(['success' => true]);
     }
 
-    /**
-     * 🔁 Fetch latest messages (AJAX)
-     */
-    public function fetch($jobId, $receiverId)
-    {
-        $messages = Message::where(function ($q) use ($jobId, $receiverId) {
-                $q->where('sender_id', Auth::id())
-                  ->where('receiver_id', $receiverId);
-            })
-            ->orWhere(function ($q) use ($jobId, $receiverId) {
-                $q->where('sender_id', $receiverId)
-                  ->where('receiver_id', Auth::id());
-            })
-            ->where('job_id', $jobId)
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        return response()->json($messages);
-    }
-
-    /**
-     * 📬 Show inbox page (Messages tab)
-     */
-    public function index()
-{
-    $userId = Auth::id();
-
-    // Get recent chats
-    $recentChats = Message::where('sender_id', $userId)
-        ->orWhere('receiver_id', $userId)
-        ->latest()
-        ->first();
-
-    // If user has previous chat, open it
-    if ($recentChats) {
-        $receiverId = $recentChats->sender_id == $userId ? $recentChats->receiver_id : $recentChats->sender_id;
-        $jobId = $recentChats->job_id;
-
-        $messages = Message::where('job_id', $jobId)
-            ->where(function ($q) use ($userId, $receiverId) {
-                $q->where('sender_id', $userId)->where('receiver_id', $receiverId);
-            })
-            ->orWhere(function ($q) use ($userId, $receiverId) {
-                $q->where('sender_id', $receiverId)->where('receiver_id', $userId);
-            })
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        return view('messages.index', compact('messages', 'receiverId', 'jobId'));
-    }
-
-    // Otherwise show default blank chat view
-    return view('messages.index', ['messages' => []]);
-}
-
-
-    /**
-     * 🧠 Return chat list (for sidebar or badges)
-     */
-    public function chatList()
+     public function chatList()
     {
         $userId = Auth::id();
 
-        $recentChats = Message::select('job_id', 'receiver_id', 'sender_id')
-            ->where('sender_id', $userId)
-            ->orWhere('receiver_id', $userId)
-            ->latest()
-            ->get()
-            ->unique(fn($m) => $m->job_id . '-' . $m->receiver_id)
-            ->map(function ($m) use ($userId) {
-                $receiverId = $m->sender_id === $userId ? $m->receiver_id : $m->sender_id;
-                $user = User::find($receiverId);
+        $messages = Message::where(function ($q) use ($userId) {
+                $q->where('sender_id', $userId)
+                  ->orWhere('receiver_id', $userId);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-                $unread = Message::where('receiver_id', $userId)
-                    ->where('sender_id', $receiverId)
-                    ->where('is_read', false)
-                    ->count();
+        $convos = [];
 
-                return [
-                    'job_id' => $m->job_id,
-                    'receiver_id' => $receiverId,
-                    'name' => $user?->name ?? 'Unknown User',
-                    'avatar' => "https://ui-avatars.com/api/?name=" . urlencode($user?->name ?? 'U') . "&background=00b3ff&color=fff",
-                    'unread' => $unread,
+        foreach ($messages as $m) {
+            $otherId = $m->sender_id == $userId ? $m->receiver_id : $m->sender_id;
+
+            if ($otherId == $userId) continue; // PREVENT SELF CHAT
+
+            $key = "{$m->job_id}-{$otherId}";
+
+            if (!isset($convos[$key])) {
+
+                $other = User::find($otherId);
+
+                $unread = Message::where([
+                        ['receiver_id', $userId],
+                        ['sender_id', $otherId],
+                        ['is_read', 0]
+                    ])->count();
+
+                $convos[$key] = [
+                    'job_id'      => $m->job_id,
+                    'receiver_id' => $otherId,   // FIXED KEY NAME
+                    'name'        => $other->name,
+                    'avatar'      => "https://ui-avatars.com/api/?name=" . urlencode($other->name) . "&background=00b3ff&color=fff",
+                    'unread'      => $unread
                 ];
-            });
+            }
+        }
 
-        return response()->json($recentChats->values());
+        return response()->json(array_values($convos));
     }
 
-public function markAsRead($jobId, $receiverId)
+
+   public function markAsRead($jobId, $receiverId)
 {
     Message::where('job_id', $jobId)
         ->where('receiver_id', Auth::id())
         ->where('sender_id', $receiverId)
-        ->update(['is_read' => true]);
+        ->update(['is_read' => 1]);
+
+    event(new ReadReceiptSent($jobId, Auth::id(), $receiverId));
 
     return response()->json(['success' => true]);
 }
+
 
 }

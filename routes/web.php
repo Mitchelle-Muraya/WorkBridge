@@ -157,9 +157,29 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/client/my-jobs', [ClientController::class, 'myJobs'])->name('client.my-jobs');
     Route::get('/dashboard/client/applications', [ClientController::class, 'viewApplications'])->name('client.applications');
     Route::get('/dashboard/client/messages', [ClientController::class, 'messages'])->name('messages.index');
-    Route::get('/dashboard/client/reviews', [ClientController::class, 'reviews'])->name('client.reviews');
+Route::get('/dashboard/client/reviews', [ClientController::class, 'reviews'])
+    ->name('client.reviews');
+
+
+
     Route::get('/dashboard/client', [ClientController::class, 'index'])->name('client.dashboard');
 Route::get('/dashboard/client/completed-jobs', [ClientController::class, 'completedJobs'])->name('client.completedJobs');
+// Client reviews the worker after job completion
+Route::get('/client/review/{job}', [ReviewController::class, 'clientReviewForm'])
+    ->name('client.review.form');
+
+Route::post('/client/review', [ReviewController::class, 'storeClientReview'])
+    ->name('client.review.store');
+
+    Route::get('/dashboard/client/job/{id}/edit', [ClientController::class, 'editJob'])
+    ->name('client.job.edit');
+
+Route::put('/dashboard/client/job/{id}', [ClientController::class, 'updateJob'])
+    ->name('client.job.update');
+
+Route::delete('/dashboard/client/job/{id}', [ClientController::class, 'deleteJob'])
+    ->name('client.job.delete');
+
 
 });
 
@@ -181,8 +201,23 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/find-jobs', [WorkerController::class, 'findJobs'])->name('worker.findJobs');
     Route::post('/apply/{job}', [ApplicationController::class, 'apply'])->name('apply.job');
     Route::get('/jobs/{id}', [WorkerController::class, 'showJob'])->name('jobs.show');
+    /* Worker leaves review for client */
+Route::get('/dashboard/worker/review/{jobId}', [WorkerController::class, 'leaveReview'])
+    ->name('worker.leaveReview');
+
+Route::post('/dashboard/worker/review/submit', [WorkerController::class, 'submitReview'])
+    ->name('worker.submitReview');
+    Route::get('/worker/review/{jobId}', [WorkerController::class, 'reviewClient'])
+    ->name('worker.reviewClient');
 
 });
+// Worker reviews the client after completing a job
+Route::get('/worker/review/{job}', [ReviewController::class, 'workerReviewForm'])
+    ->name('worker.review.form');
+
+Route::post('/worker/review', [ReviewController::class, 'storeWorkerReview'])
+    ->name('worker.review.store');
+
 
 
 /*
@@ -232,19 +267,31 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/job-accepted/{application}', [NotificationController::class, 'jobAccepted'])->name('notifications.jobAccepted');
     Route::post('/notifications/job-rejected/{application}', [NotificationController::class, 'jobRejected'])->name('notifications.jobRejected');
 });
-
-/*
-|--------------------------------------------------------------------------
-| 💬 Chat System
-|--------------------------------------------------------------------------
-*/
+/*Chat System*/
 Route::middleware(['auth'])->group(function () {
-    Route::get('/chat/{jobId}/{receiverId}', [ChatController::class, 'index'])->name('chat.index');
-    Route::get('/chat/fetch/{jobId}/{receiverId}', [ChatController::class, 'fetch'])->name('chat.fetch');
-    Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
+
+    Route::get('/dashboard/messages', [ChatController::class, 'index'])->name('messages.index');
+
+    Route::get(
+    '/chat/start/{jobId}/{receiverId}',
+    [ChatController::class, 'startChat']
+)->name('chat.start');
+
+
+    Route::get('/chat/fetch/{jobId}/{receiverId}', [ChatController::class, 'fetch']);
+
+    Route::post('/chat/send', [ChatController::class, 'send']);
+
     Route::post('/chat/read/{jobId}/{receiverId}', [ChatController::class, 'markAsRead']);
-    Route::get('/messages/list', [ChatController::class, 'chatList'])->name('messages.list');
+
+    Route::get('/messages/list', [ChatController::class, 'chatList']);
+    Route::post('/typing', function(Request $r){
+    event(new UserTyping($r->job_id, Auth::id(), $r->receiver_id));
 });
+
+});
+
+
 
 /*
 |--------------------------------------------------------------------------

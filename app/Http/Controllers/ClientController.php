@@ -34,14 +34,23 @@ class ClientController extends Controller
 
         $applications = Application::whereHas('job', function ($q) use ($clientId) {
             $q->where('client_id', $clientId);
-        })->with(['user', 'job'])->latest()->take(5)->get();
+        })
+        ->with(['user', 'job'])
+        ->latest()
+        ->take(5)
+        ->get();
 
-        // 🧠 Load any previously saved recommendations
+        // Load previously saved recommendations
         $recommended = json_decode($client->recommended_workers ?? '[]', true);
+$newApplications = Application::whereHas('job', function ($q) use ($clientId) {
+    $q->where('client_id', $clientId);
+})->where('viewed', false)->count();
 
         return view('dashboard.client', compact(
-            'totalJobs', 'jobsInProgress', 'completedJobs', 'applications', 'recommended'
-        ));
+    'totalJobs', 'jobsInProgress', 'completedJobs',
+    'applications', 'recommended', 'newApplications'
+));
+
     }
 
     /**
@@ -53,32 +62,31 @@ class ClientController extends Controller
     }
 
     /**
-     * 💾 STORE A NEW JOB & GET AI RECOMMENDATIONS
+     * 💾 STORE NEW JOB + AI RECOMMENDATIONS
      */
     public function storeJob(Request $request)
     {
         $user = Auth::user();
 
-        // ✅ Ensure client record exists
+        // Ensure client record exists
         $client = Client::firstOrCreate(
             ['user_id' => $user->id],
             ['company' => $user->name . ' Company', 'photo' => null]
         );
 
-        // Switch to client mode if needed
+        // Switch mode
         if ($user->mode !== 'client') {
             $user->update(['mode' => 'client']);
         }
 
-        // ✅ Combine skills and "other_skill"
+        // Skills
         $skills = $request->input('skills_required', []);
         if ($request->filled('other_skill')) {
             $skills[] = $request->input('other_skill');
         }
-
         $skillsString = implode(', ', $skills);
 
-        // ✅ Validate job inputs
+        // Validate job inputs
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
@@ -87,16 +95,17 @@ class ClientController extends Controller
             'location' => 'required|string|max:255',
         ]);
 
-        // ✅ Add additional job fields
         $validated['skills_required'] = $skillsString;
         $validated['client_id'] = $client->id;
         $validated['user_id'] = $user->id;
         $validated['status'] = 'pending';
 
-        // ✅ Save the job in DB
+        // Save job
         $job = Job::create($validated);
 
-
+        /**
+         * 🔥 GET AI WORKER RECOMMENDATIONS (FLASK API)
+         */
         try {
             $response = Http::post('http://127.0.0.1:10000/recommend_workers', [
                 'skills' => $validated['skills_required']
@@ -104,14 +113,14 @@ class ClientController extends Controller
 
             if ($response->successful()) {
                 $data = $response->json();
-\Log::info('FLASK RESPONSE:', $data);
+                \Log::info('FLASK RESPONSE:', $data);
 
-                // Expecting structure: { "recommended_workers": [ ... ] }
                 $recommended = $data['recommended_workers'] ?? [];
 
-                // Map and clean up worker data
+                // Convert into usable format
                 $workers = collect($recommended)->map(function ($w) {
                     return [
+                        'user_id' => $w['user_id'] ?? null, // REQUIRED for filtering
                         'name' => $w['worker_name'] ?? $w['name'] ?? 'Unnamed Worker',
                         'skills' => $w['skills'] ?? 'N/A',
                         'photo' => $w['photo'] ?? 'https://ui-avatars.com/api/?name=' . urlencode($w['worker_name'] ?? 'Worker'),
@@ -120,28 +129,33 @@ class ClientController extends Controller
                     ];
                 });
 
-                // Save permanently in client record
+                /**
+                 * 🚫 FIX: DO NOT RECOMMEND LOGGED-IN USER
+                 */
+                $workers = $workers->filter(function ($w) use ($user) {
+                    return $w['user_id'] !== $user->id;
+                })->values();
+
+                // Save to DB
                 $client->recommended_workers = json_encode($workers);
                 $client->save();
             } else {
-                \Log::warning('Flask API failed: ' . $response->body());
+                \Log::warning('Flask error: ' . $response->body());
             }
         } catch (\Exception $e) {
-            \Log::error('Worker recommendation failed: ' . $e->getMessage());
+            \Log::error('Recommendation failed: ' . $e->getMessage());
         }
 
-        // ✅ Redirect to dashboard
         return redirect()->route('client.dashboard')
-            ->with('success', 'Job posted successfully! AI-recommended workers updated.');
+            ->with('success', 'Job posted successfully! AI recommendations refreshed.');
     }
 
     /**
-     * 📋 LIST ALL JOBS POSTED BY THIS CLIENT
+     * 📋 LIST ALL JOBS
      */
     public function myJobs()
     {
-        $userId = Auth::id();
-        $client = Client::where('user_id', $userId)->first();
+        $client = Client::where('user_id', Auth::id())->first();
 
         if (!$client) {
             return redirect()->route('dashboard')
@@ -152,6 +166,60 @@ class ClientController extends Controller
         return view('client.my-jobs', compact('jobs'));
     }
 
+    /**
+     * ✏ EDIT JOB
+     */
+    public function editJob($id)
+    {
+        $client = Client::where('user_id', Auth::id())->first();
+
+        if (!$client) {
+            return redirect()->route('client.my-jobs')
+                ->with('error', 'Client profile not found.');
+        }
+
+        $job = Job::where('id', $id)
+            ->where('client_id', $client->id)
+            ->firstOrFail();
+
+        return view('client.edit-job', compact('job'));
+    }
+
+    public function updateJob(Request $request, $id)
+    {
+        $job = Job::where('id', $id)
+            ->where('client_id', Auth::user()->client->id)
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'budget' => 'required|numeric|min:0',
+            'deadline' => 'required|date',
+            'location' => 'required|string|max:255',
+        ]);
+
+        $job->update($validated);
+
+        return redirect()->route('client.my-jobs')
+            ->with('success', 'Job updated successfully.');
+    }
+
+    public function deleteJob($id)
+    {
+        $job = Job::where('id', $id)
+            ->where('client_id', Auth::user()->client->id)
+            ->firstOrFail();
+
+        $job->delete();
+
+        return redirect()->route('client.my-jobs')
+            ->with('success', 'Job deleted successfully.');
+    }
+
+    /**
+     * 📬 APPLICATIONS
+     */
     public function messages()
     {
         return view('messages.index');
@@ -159,16 +227,19 @@ class ClientController extends Controller
 
     public function reviews()
     {
-        return view('client.reviews');
+        $clientId = auth()->id();
+
+        $reviews = \App\Models\Review::where('client_id', $clientId)
+            ->with(['worker.user', 'job'])
+            ->latest()
+            ->get();
+
+        return view('client.reviews', compact('reviews'));
     }
 
-    /**
-     * 📬 VIEW JOB APPLICATIONS
-     */
     public function viewApplications()
     {
-        $userId = Auth::id();
-        $client = Client::where('user_id', $userId)->first();
+        $client = Client::where('user_id', Auth::id())->first();
 
         if (!$client) {
             return redirect()->route('dashboard')
@@ -178,6 +249,12 @@ class ClientController extends Controller
         $applications = Application::whereHas('job', fn($q) =>
             $q->where('client_id', $client->id)
         )->with(['user', 'job'])->latest()->get();
+          // 🔥 Mark all as viewed when client opens the applications page
+    Application::whereHas('job', fn($q) =>
+        $q->where('client_id', $client->id)
+    )->update(['viewed' => true]);
+
+
 
         return view('client.applications', compact('applications'));
     }
@@ -186,14 +263,14 @@ class ClientController extends Controller
     {
         return $this->viewApplications();
     }
-   public function completedJobs()
-{
-    $completedJobs = \App\Models\Job::where('client_id', auth()->id())
-        ->where('status', 'completed')
-        ->with('worker.user')
-        ->get();
 
-    return view('client.completed-jobs', compact('completedJobs'));
-}
+    public function completedJobs()
+    {
+        $completedJobs = Job::where('client_id', auth()->id())
+            ->where('status', 'completed')
+            ->with('worker.user')
+            ->get();
 
+        return view('client.completed-jobs', compact('completedJobs'));
+    }
 }

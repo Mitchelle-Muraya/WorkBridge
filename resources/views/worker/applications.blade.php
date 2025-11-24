@@ -167,9 +167,12 @@
           </div>
 
           @if($app->status == 'accepted')
-            <a href="{{ route('messages.index') }}" class="btn btn-success mt-3 mt-sm-0">
-              <i class="bi bi-chat-dots"></i> Message Employer
-            </a>
+            <a href="{{ route('chat.start', ['jobId' => $app->job->id, 'receiverId' => $app->user->id]) }}"
+   class="btn btn-info btn-sm">
+   <i class="bi bi-chat-dots"></i> Chat
+</a>
+
+
           @endif
         </div>
       </div>

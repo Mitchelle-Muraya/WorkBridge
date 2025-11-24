@@ -7,7 +7,7 @@
 
   <!-- Bootstrap & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet" />
 
   <style>
   :root {
@@ -17,41 +17,25 @@
     --card-bg: #ffffff;
     --text: #0f172a;
     --muted: #5a6575;
-    --border: rgba(0,0,0,0.08);
+    --border: rgba(0,0,0,0.1);
     --sidebar-bg: linear-gradient(180deg, #00b3ff, #0077cc);
-    --navbar-bg: #ffffff;
-  }
-
-  [data-theme="dark"] {
-    --bg: #0b0f19;
-    --card-bg: #1a2233;
-    --text: #ffffff;
-    --muted: #cfd6e0;
-    --border: rgba(255,255,255,0.08);
-    --sidebar-bg: linear-gradient(180deg, #101828, #0b132b);
-    --navbar-bg: rgba(0,0,0,0.92);
   }
 
   body {
     font-family: "Poppins", sans-serif;
     background: var(--bg);
     color: var(--text);
-    transition: background 0.4s, color 0.4s;
   }
 
+  /* NAVBAR */
   .navbar {
-    background: var(--navbar-bg);
+    background: #ffffff;
     border-bottom: 1px solid var(--border);
     height: 70px;
-    backdrop-filter: blur(10px);
   }
+  .navbar-brand { color: var(--primary) !important; font-weight: 700; }
 
-  .navbar-brand {
-    color: var(--primary) !important;
-    font-weight: 700;
-    font-size: 1.5rem;
-  }
-
+  /* SIDEBAR */
   .sidebar {
     position: fixed;
     top: 0; left: 0;
@@ -61,94 +45,96 @@
     padding-top: 90px;
     color: white;
   }
-
   .sidebar a {
     display: flex;
     align-items: center;
     color: #fff;
-    text-decoration: none;
     padding: 14px 22px;
     font-weight: 500;
+    text-decoration: none;
     border-left: 3px solid transparent;
-    transition: all 0.3s ease;
+    transition: 0.3s ease;
   }
-
   .sidebar a.active,
   .sidebar a:hover {
     background: rgba(255,255,255,0.15);
     border-left: 3px solid var(--accent);
   }
 
+  /* CONTENT AREA */
   .content {
     margin-left: 270px;
     padding: 100px 40px;
   }
 
-  .job-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
+  /* TABLE DESIGN */
+  table thead {
+    background: #eef6ff;
+  }
+  th {
+    padding: 15px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  td {
+    padding: 16px;
+    vertical-align: middle;
+  }
+  tr {
+    background: #fff;
+    border-bottom: 1px solid #eee;
+  }
+  tr:hover {
+    background: #f0faff;
   }
 
-  .job-card:hover {
-    transform: translateY(-3px);
-    border-color: var(--primary);
+  .status-badge {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
   }
 
-  .badge-status {
-    font-size: 0.8rem;
-    border-radius: 6px;
-    padding: 5px 10px;
+  .btn-action {
+    font-size: 1.2rem;
+    cursor: pointer;
+    margin-right: 12px;
+    transition: 0.2s;
+  }
+  .btn-action:hover {
+    transform: scale(1.2);
   }
 
-  footer {
-    text-align: center;
-    color: var(--muted);
-    padding: 25px;
-    border-top: 1px solid var(--border);
-    margin-top: 40px;
-  }
+  .edit-icon { color: #0077ff; }
+  .delete-icon { color: #e63946; }
   </style>
 </head>
 
 <body>
-  <!-- 🔝 NAVBAR -->
-  <nav class="navbar navbar-expand-lg fixed-top px-4">
-    <a class="navbar-brand" href="#">WorkBridge</a>
-    <div class="ms-auto d-flex align-items-center gap-4">
-      <label class="switch mb-0" title="Toggle Light/Dark Mode">
-        <input type="checkbox" id="themeToggle" />
-        <span class="slider"></span>
-      </label>
-      <a href="{{ route('switch.mode') }}" class="btn btn-outline-info fw-semibold py-1 px-3">
-        {{ Auth::user()->role === 'client' ? 'Become Worker' : 'Become Client' }}
-      </a>
-    </div>
-  </nav>
 
-  <!-- 📋 SIDEBAR -->
-  <div class="sidebar">
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg fixed-top px-4 shadow-sm">
+    <a class="navbar-brand" href="#">WorkBridge</a>
+</nav>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
     <a href="{{ route('client.dashboard') }}"><i class="bi bi-grid me-2"></i> Dashboard</a>
     <a href="{{ route('client.postJob') }}"><i class="bi bi-plus-circle me-2"></i> Post Job</a>
     <a href="{{ route('client.my-jobs') }}" class="active"><i class="bi bi-briefcase me-2"></i> My Jobs</a>
     <a href="{{ route('client.applications') }}"><i class="bi bi-envelope me-2"></i> Applications</a>
     <a href="{{ route('messages.index') }}"><i class="bi bi-chat-dots me-2"></i> Messages</a>
     <a href="{{ route('client.reviews') }}"><i class="bi bi-star me-2"></i> Reviews</a>
-  </div>
+</div>
 
-  <!-- 💼 CONTENT -->
-  <div class="content">
-    <h2 class="fw-bold mb-4"><i class="bi bi-briefcase-fill text-primary me-2"></i>My Posted Jobs</h2>
+<!-- PAGE CONTENT -->
+<div class="content">
+    <h2 class="fw-bold mb-4">
+        <i class="bi bi-briefcase-fill text-primary me-2"></i> My Posted Jobs
+    </h2>
 
     @if(session('success'))
-      <div class="alert alert-success alert-dismissible fade show">
-        <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      </div>
+      <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
     @if($jobs->isEmpty())
@@ -156,56 +142,61 @@
         <i class="bi bi-info-circle"></i> You haven’t posted any jobs yet.
       </div>
     @else
-      @foreach($jobs as $job)
-        <div class="job-card">
-          <div class="d-flex justify-content-between align-items-center flex-wrap">
-            <div>
-              <h5 class="fw-bold mb-2">{{ $job->title }}</h5>
-              <p class="text-muted mb-1">{{ Str::limit($job->description, 120) }}</p>
-              <small class="text-muted">
-                <i class="bi bi-calendar2-week"></i> Posted on {{ $job->created_at->format('M d, Y') }}
-              </small>
-            </div>
-            <div>
-              <span class="badge-status {{ $job->status == 'completed' ? 'bg-success' : ($job->status == 'in_progress' ? 'bg-warning text-dark' : 'bg-secondary') }}">
+
+    <div class="table-responsive shadow-sm rounded">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Job Title</th>
+            <th>Budget</th>
+            <th>Deadline</th>
+            <th>Status</th>
+            <th>Posted</th>
+            <th class="text-center">Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          @foreach($jobs as $job)
+          <tr>
+            <td>{{ $job->title }}</td>
+            <td>Ksh {{ number_format($job->budget) }}</td>
+            <td>{{ date('M d, Y', strtotime($job->deadline)) }}</td>
+            <td>
+              <span class="status-badge
+                {{ $job->status == 'completed' ? 'bg-success text-white' :
+                   ($job->status == 'in_progress' ? 'bg-warning text-dark' : 'bg-secondary text-white') }}">
                 {{ ucfirst($job->status) }}
               </span>
-            </div>
-          </div>
-        </div>
-      @endforeach
+            </td>
+            <td>{{ $job->created_at->format('M d, Y') }}</td>
+
+            <td class="text-center">
+
+              <!-- EDIT -->
+              <a href="{{ route('client.job.edit', $job->id) }}" class="btn-action edit-icon">
+                <i class="bi bi-pencil-square"></i>
+              </a>
+
+              <!-- DELETE -->
+              <form action="{{ route('client.job.delete', $job->id) }}" method="POST" class="d-inline"
+                onsubmit="return confirm('Are you sure you want to delete this job?');">
+                  @csrf
+                  @method('DELETE')
+                  <button class="btn-action delete-icon border-0 bg-transparent">
+                    <i class="bi bi-trash"></i>
+                  </button>
+              </form>
+
+            </td>
+          </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+
     @endif
-    @if(session('recommended_workers'))
-  <div class="alert alert-info mt-4">
-    <h5>🎯 Recommended Workers for your latest job</h5>
-    <ul>
-      @foreach(session('recommended_workers') as $worker)
-        <li>
-          <strong>{{ $worker['name'] }}</strong> — Skills: {{ $worker['skills'] }}
-        </li>
-      @endforeach
-    </ul>
-  </div>
-@endif
+</div>
 
-  </div>
-
-  <footer>© {{ date('Y') }} WorkBridge | Empowering Employers 🌍</footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-  // 🌙 Theme toggle
-  const html = document.documentElement;
-  const toggle = document.getElementById('themeToggle');
-  if (localStorage.getItem('theme') === 'dark') {
-    html.setAttribute('data-theme', 'dark');
-    toggle.checked = true;
-  }
-  toggle.addEventListener('change', () => {
-    const isDark = toggle.checked;
-    html.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  });
-  </script>
 </body>
 </html>

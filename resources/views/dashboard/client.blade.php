@@ -391,29 +391,23 @@ input:checked + .slider:before {
     <i class="bi bi-plus-circle"></i> Post Job
   </a>
 
- @if(!empty($recommended) && count($recommended) > 0)
-  <div class="mt-4 px-3">
-    <h5 class="text-white mb-2">👷 Recommended Workers</h5>
-    <ul class="list-unstyled mb-0">
-      @foreach($recommended as $worker)
-        <li>- {{ $worker['name'] ?? $worker['worker_name'] ?? 'Unknown' }}</li>
-      @endforeach
-    </ul>
-  </div>
-@else
-  <div class="mt-4 px-3 text-white-50 small">
-    <em>No AI recommendations yet.</em>
-  </div>
-@endif
+
 
 
   <a href="{{ route('client.my-jobs') }}">
     <i class="bi bi-briefcase"></i> My Jobs
   </a>
 
-  <a href="{{ route('client.applications') }}">
-    <i class="bi bi-envelope-open"></i> Applications
-  </a>
+  <a href="{{ route('client.applications') }}" class="position-relative">
+    <i class="bi bi-envelope me-2"></i> Applications
+
+    @if(isset($newApplications) && $newApplications > 0)
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            {{ $newApplications }}
+        </span>
+    @endif
+</a>
+
 
   <a href="{{ route('messages.index') }}" class="position-relative">
     <i class="bi bi-chat-dots"></i> Messages
@@ -528,76 +522,7 @@ input:checked + .slider:before {
 
   <hr class="my-5">
 
-    <!-- 📨 JOB APPLICATIONS -->
-  <h2 class="mb-4">
-    <i class="bi bi-people-fill me-2"></i> Job Applications
-  </h2>
 
-  @forelse ($applications as $app)
-    <div class="application-card mb-4">
-      <div class="d-flex justify-content-between align-items-center flex-wrap">
-        <div>
-          <h4 class="fw-bold mb-2">{{ $app->job->title }}</h4>
-          <p class="text-muted mb-1">
-            <i class="bi bi-person-fill text-primary"></i>
-            <strong>Applicant:</strong> {{ $app->user->name }}
-          </p>
-          <p class="mb-1">
-            <strong>Status:</strong>
-            <span class="badge
-              {{ $app->status == 'pending' ? 'bg-warning text-dark' :
-                 ($app->status == 'accepted' ? 'bg-success' : 'bg-danger') }}">
-              {{ ucfirst($app->status) }}
-            </span>
-          </p>
-          <small class="text-muted">
-            <i class="bi bi-calendar2-week"></i>
-            Applied on {{ $app->created_at->format('M d, Y h:i A') }}
-          </small>
-        </div>
-
-        <div class="mt-3 mt-sm-0 text-end">
-          @if($app->status == 'pending')
-            <form action="{{ route('applications.updateStatus', $app->id) }}" method="POST" class="d-inline">
-              @csrf
-              @method('PUT')
-              <input type="hidden" name="status" value="accepted">
-              <button type="submit" class="btn-approve me-2">
-                <i class="bi bi-check2-circle"></i> Approve
-              </button>
-            </form>
-
-            <form action="{{ route('applications.updateStatus', $app->id) }}" method="POST" class="d-inline">
-              @csrf
-              @method('PUT')
-              <input type="hidden" name="status" value="rejected">
-              <button type="submit" class="btn-reject">
-                <i class="bi bi-x-circle"></i> Reject
-              </button>
-            </form>
-
-          @elseif($app->status == 'accepted')
-
-
-            <!-- ✅ Chat button (only for accepted jobs) -->
-            <a href="#"
-              class="btn btn-outline-info mt-3 openChat"
-              data-job="{{ $app->job_id }}"
-              data-receiver="{{ $app->user_id }}"
-              data-name="{{ $app->user->name }}"
-              data-avatar="https://ui-avatars.com/api/?name={{ urlencode($app->user->name) }}&background=00b3ff&color=fff">
-              <i class="bi bi-chat-dots"></i> Chat
-            </a>
-          @endif
-        </div>
-      </div>
-    </div>
-  @empty
-    <div class="alert alert-info text-center">
-      <i class="bi bi-info-circle"></i> No job applications yet.
-    </div>
-  @endforelse
-</div> <!-- end .content -->
 
   <footer>© {{ date('Y') }} WorkBridge | Empowering Employers 🌍</footer>
 
@@ -682,15 +607,16 @@ $(document).on('click', '.openChat', function(e) {
     const message = $('#chatMessage').val().trim();
     if (!message) return;
 
-    $.post('{{ route("chat.send") }}', {
-      _token: '{{ csrf_token() }}',
-      job_id: jobId,
-      receiver_id: receiverId,
-      message: message
-    }, function() {
-      $('#chatMessage').val('');
-      $('.openChat[data-job="' + jobId + '"]').trigger('click');
-    });
+   $.post('/chat/send', {
+  _token: '{{ csrf_token() }}',
+  job_id: jobId,
+  receiver_id: receiverId,
+  message: message
+}, function() {
+  $('#chatMessage').val('');
+  $('.openChat[data-job="' + jobId + '"]').trigger('click');
+});
+
   });
 });
 

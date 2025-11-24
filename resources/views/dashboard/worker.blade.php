@@ -377,6 +377,15 @@
   transform: translateY(-3px);
   border-color: var(--primary);
 }
+.notification-dot {
+    position: absolute;
+    top: 12px;
+    left: 180px;
+    width: 10px;
+    height: 10px;
+    background: red;
+    border-radius: 50%;
+}
 
 
 
@@ -442,9 +451,17 @@
     <i class="bi bi-briefcase me-2"></i> My Jobs
   </a>
 
-  <a href="{{ route('worker.applications') }}" class="{{ request()->routeIs('worker.applications') ? 'active' : '' }}">
+  <a href="{{ route('worker.applications') }}"
+   class="{{ request()->routeIs('worker.applications') ? 'active' : '' }} position-relative">
+
     <i class="bi bi-envelope me-2"></i> Applications
-  </a>
+
+    @if(Auth::user()->application_notification == 1)
+        <span class="notification-dot"></span>
+    @endif
+</a>
+
+
 
   <a href="{{ route('messages.index') }}" class="{{ request()->routeIs('messages.index') ? 'active' : '' }} position-relative">
     <i class="bi bi-chat-dots me-2"></i> Messages
@@ -508,11 +525,12 @@
   </div>
   <div class="col-md-3">
     <div class="stat-card">
-      <i class="bi bi-chat-left-dots-fill text-success fs-3"></i>
-      <h5 class="mt-2 fw-bold">{{ $unreadMessages ?? 0 }}</h5>
-      <p class="text-muted small mb-0">Unread Messages</p>
+        <i class="bi bi-chat-left-dots-fill text-success fs-3"></i>
+        <h5 class="mt-2 fw-bold">{{ $unreadMessages }}</h5>
+        <p class="text-muted small mb-0">Unread Messages</p>
     </div>
-  </div>
+</div>
+
   <div class="col-md-3">
     <div class="stat-card">
       <i class="bi bi-star-fill text-warning fs-3"></i>
@@ -587,21 +605,7 @@
 @endif
 
 
-    @if(!$recommendedJobs->isEmpty())
-<div class="row">
-    @foreach($recommendedJobs as $job)
-        <div class="col-md-6 col-lg-4 mb-3">
-            <div class="card h-100 shadow-sm border-0 p-3">
-                <h6 class="fw-bold">{{ $job->title }}</h6>
-                <p class="text-muted">{{ Str::limit($job->description, 100) }}</p>
-                <a href="{{ route('worker.findJobs') }}" class="btn btn-sm btn-outline-primary">
-                    View Job
-                </a>
-            </div>
-        </div>
-    @endforeach
-</div>
-@endif
+
 
 
   <footer>© {{ date('Y') }} WorkBridge | Empowering Skilled Workers 🌍</footer>
@@ -673,7 +677,8 @@ function fetchNotifications() {
 // ---------------------------
 function fetchMessageCount() {
   $.ajax({
-    url: "{{ route('messages.list') }}", // ChatController@chatList
+    url: "/messages/list",
+
     method: 'GET',
     success: function(data) {
       let unreadTotal = 0;

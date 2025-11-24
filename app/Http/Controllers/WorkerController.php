@@ -45,10 +45,14 @@ class WorkerController extends Controller
          * 📊 DASHBOARD STATS
          */
         $availableJobsCount = Job::count();
-        $pendingApplicationsCount = Application::where('user_id', $userId)->count();
-        $unreadMessages = Message::where('receiver_id', $userId)
 
+        $pendingApplicationsCount = Application::where('user_id', $userId)->count();
+
+        // ✅ FIXED unread messages count
+        $unreadMessages = Message::where('receiver_id', $userId)
+            ->where('is_read', 0)
             ->count();
+
         $averageRating = Review::where('worker_id', $userId)->avg('rating');
 
         /**
@@ -223,6 +227,44 @@ public function reviews()
         ->get();
 
     return view('worker.reviews', compact('reviews'));
+}
+public function leaveReview($jobId)
+{
+    $job = \App\Models\Job::findOrFail($jobId);
+    $client = \App\Models\User::findOrFail($job->client_id);
+
+    return view('worker.leave-review', compact('job', 'client'));
+}
+
+
+public function submitReview(Request $request)
+{
+    $request->validate([
+        'job_id' => 'required',
+        'client_id' => 'required',
+        'rating' => 'required|integer|min:1|max:5',
+        'review' => 'required|string'
+    ]);
+
+    \App\Models\Review::create([
+        'job_id' => $request->job_id,
+        'client_id' => $request->client_id,
+        'worker_id' => Auth::id(),
+        'rating' => $request->rating,
+        'review' => $request->review,
+    ]);
+
+    return redirect()->route('worker.dashboard')->with('success', 'Review submitted successfully!');
+}
+
+public function reviewClient($jobId)
+{
+    $job = Job::with('client.user')->findOrFail($jobId);
+
+    // The client who posted the job
+    $client = $job->client->user;
+
+    return view('worker.review-client', compact('job', 'client'));
 }
 
 }
