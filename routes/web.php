@@ -156,7 +156,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dashboard/client/post-job', [ClientController::class, 'storeJob'])->name('client.storeJob');
     Route::get('/dashboard/client/my-jobs', [ClientController::class, 'myJobs'])->name('client.my-jobs');
     Route::get('/dashboard/client/applications', [ClientController::class, 'viewApplications'])->name('client.applications');
-    Route::get('/dashboard/client/messages', [ClientController::class, 'messages'])->name('messages.index');
+
+
 Route::get('/dashboard/client/reviews', [ClientController::class, 'reviews'])
     ->name('client.reviews');
 
@@ -269,31 +270,16 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/job-accepted/{application}', [NotificationController::class, 'jobAccepted'])->name('notifications.jobAccepted');
     Route::post('/notifications/job-rejected/{application}', [NotificationController::class, 'jobRejected'])->name('notifications.jobRejected');
 });
-/*Chat System*/
-Route::middleware(['auth'])->group(function () {
+Route::get('/dashboard/messages', [ChatController::class, 'index'])->name('messages.index');
+Route::get('/dashboard/client/messages', [ChatController::class, 'index'])->name('client.messages');
 
-    Route::get('/dashboard/messages', [ChatController::class, 'index'])->name('messages.index');
+Route::get('/chat/start/{jobId}/{receiverId}', [ChatController::class, 'startChat'])->name('chat.start');
 
-    Route::get(
-    '/chat/start/{jobId}/{receiverId}',
-    [ChatController::class, 'startChat']
-)->name('chat.start');
+Route::get('/chat/fetch/{jobId}/{receiverId}', [ChatController::class, 'fetch']);
+Route::post('/chat/send', [ChatController::class, 'send']);
+Route::post('/chat/read/{jobId}/{receiverId}', [ChatController::class, 'markAsRead']);
 
-
-    Route::get('/chat/fetch/{jobId}/{receiverId}', [ChatController::class, 'fetch']);
-
-    Route::post('/chat/send', [ChatController::class, 'send']);
-
-    Route::post('/chat/read/{jobId}/{receiverId}', [ChatController::class, 'markAsRead']);
-
-    Route::get('/messages/list', [ChatController::class, 'chatList']);
-    Route::post('/typing', function(Request $r){
-    event(new UserTyping($r->job_id, Auth::id(), $r->receiver_id));
-});
-
-});
-
-
+Route::get('/messages/list', [ChatController::class, 'chatList']);
 
 /*
 |--------------------------------------------------------------------------

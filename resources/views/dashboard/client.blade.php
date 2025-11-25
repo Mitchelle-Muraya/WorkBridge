@@ -501,7 +501,7 @@ input:checked + .slider:before {
               </div>
 
               <div class="d-flex justify-content-between">
-                <a href="{{ route('messages.index') }}" class="btn btn-outline-info btn-sm fw-semibold">
+                <a href="{{ route('client.messages') }}" class="btn btn-outline-info btn-sm fw-semibold">
                   <i class="bi bi-chat-dots"></i> Message
                 </a>
                 <a href="{{ route('client.applications') }}" class="btn btn-outline-light btn-sm fw-semibold">

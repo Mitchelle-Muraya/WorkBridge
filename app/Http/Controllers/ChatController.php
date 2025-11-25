@@ -7,34 +7,34 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Message;
 use App\Models\Notification;
 use App\Models\User;
-use App\Events\MessageSent; // <-- IMPORTANT
+use App\Events\MessageSent;
+use App\Events\ReadReceiptSent;
 
 class ChatController extends Controller
 {
+    // ALWAYS load chat.index, NEVER messages.index
     public function index()
     {
-        return view('messages.index', [
-            'messages' => [],
-            'receiverId' => null,
-            'jobId' => null,
-            'autoOpen' => false
-        ]);
+        return view('chat.index');
     }
 
+    // Auto-open chat when coming from “Chat” button
     public function startChat($jobId, $receiverId)
     {
         $receiver = User::find($receiverId);
 
-        return view('messages.index', [
-            'messages' => [],
-            'receiverId' => $receiverId,
+        return view('chat.index', [
             'jobId' => $jobId,
-            'receiverName' => $receiver->name,
-            'receiverAvatar' => "https://ui-avatars.com/api/?name=" . urlencode($receiver->name) . "&background=00b3ff&color=fff",
+            'receiverId' => $receiverId,
+            'receiverName' => $receiver?->name ?? 'Unknown User',
+            'receiverAvatar' =>
+                "https://ui-avatars.com/api/?name=" . urlencode($receiver?->name ?? 'User') .
+                "&background=00b3ff&color=fff",
             'autoOpen' => true,
         ]);
     }
 
+    // Fetch messages for the selected conversation
     public function fetch($jobId, $receiverId)
     {
         $messages = Message::where('job_id', $jobId)
@@ -54,13 +54,13 @@ class ChatController extends Controller
         return response()->json($messages);
     }
 
+    // Send message
     public function send(Request $request)
     {
         $request->validate([
             'message' => 'required|string|max:1000'
         ]);
 
-        // ✔ Save message
         $msg = Message::create([
             'sender_id' => Auth::id(),
             'receiver_id' => $request->receiver_id,
@@ -69,10 +69,8 @@ class ChatController extends Controller
             'is_read' => 0
         ]);
 
-        // ✔ Broadcast in REAL TIME
         event(new MessageSent($msg));
 
-        // ✔ Create notification
         Notification::create([
             'user_id' => $request->receiver_id,
             'title' => 'New Message',
@@ -82,7 +80,8 @@ class ChatController extends Controller
         return response()->json(['success' => true]);
     }
 
-     public function chatList()
+    // Load chat list
+    public function chatList()
     {
         $userId = Auth::id();
 
@@ -97,8 +96,7 @@ class ChatController extends Controller
 
         foreach ($messages as $m) {
             $otherId = $m->sender_id == $userId ? $m->receiver_id : $m->sender_id;
-
-            if ($otherId == $userId) continue; // PREVENT SELF CHAT
+            if ($otherId == $userId) continue;
 
             $key = "{$m->job_id}-{$otherId}";
 
@@ -114,9 +112,9 @@ class ChatController extends Controller
 
                 $convos[$key] = [
                     'job_id'      => $m->job_id,
-                    'receiver_id' => $otherId,   // FIXED KEY NAME
-                    'name'        => $other->name,
-                    'avatar'      => "https://ui-avatars.com/api/?name=" . urlencode($other->name) . "&background=00b3ff&color=fff",
+                    'receiver_id' => $otherId,  // FIXED NAME
+                    'name'        => $other?->name ?? 'Unknown User',
+                    'avatar'      => "https://ui-avatars.com/api/?name=" . urlencode($other?->name ?? 'User') . "&background=00b3ff&color=fff",
                     'unread'      => $unread
                 ];
             }
@@ -125,18 +123,16 @@ class ChatController extends Controller
         return response()->json(array_values($convos));
     }
 
+    // Mark conversation as read
+    public function markAsRead($jobId, $receiverId)
+    {
+        Message::where('job_id', $jobId)
+            ->where('receiver_id', Auth::id())
+            ->where('sender_id', $receiverId)
+            ->update(['is_read' => 1]);
 
-   public function markAsRead($jobId, $receiverId)
-{
-    Message::where('job_id', $jobId)
-        ->where('receiver_id', Auth::id())
-        ->where('sender_id', $receiverId)
-        ->update(['is_read' => 1]);
+        event(new ReadReceiptSent($jobId, Auth::id(), $receiverId));
 
-    event(new ReadReceiptSent($jobId, Auth::id(), $receiverId));
-
-    return response()->json(['success' => true]);
-}
-
-
+        return response()->json(['success' => true]);
+    }
 }

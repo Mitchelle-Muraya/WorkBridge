@@ -27,9 +27,10 @@ class RegisterController extends Controller
         'email' => 'required|string|email|max:255|unique:users',
         'password' => [
             'required',
-            'confirmed',
+            'string',
             'min:6',
-            'regex:/^[a-z0-9]+$/'
+            'confirmed',
+            'regex:/^[a-z0-9]+$/', // Only lowercase letters + numbers
         ],
     ], [
         'password.regex' => 'Password must contain only lowercase letters and numbers.',

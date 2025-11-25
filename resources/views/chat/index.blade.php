@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+
 <style>
 :root {
   --primary: #00b3ff;
@@ -20,17 +21,14 @@
   --border: rgba(255, 255, 255, 0.1);
 }
 
-/* ---- PAGE LAYOUT ---- */
 body {
   background: var(--bg);
   color: var(--text);
-  transition: background 0.3s, color 0.3s;
 }
 
 .chat-wrapper {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
   padding: 40px 0;
 }
 
@@ -42,7 +40,7 @@ body {
   width: 100%;
 }
 
-/* ---- SIDEBAR ---- */
+/* SIDEBAR */
 .chat-sidebar {
   background: var(--card-bg);
   border: 1px solid var(--border);
@@ -58,22 +56,7 @@ body {
   font-weight: 600;
 }
 
-.chat-sidebar .list-group {
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.chat-sidebar .list-group-item {
-  border: none;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.3s;
-}
-
-.chat-sidebar .list-group-item:hover {
-  background: rgba(0, 179, 255, 0.05);
-}
-
-/* ---- CHAT BOX ---- */
+/* CHAT BOX */
 .chat-box {
   background: var(--card-bg);
   border-radius: 18px;
@@ -85,7 +68,6 @@ body {
   overflow: hidden;
 }
 
-/* HEADER */
 .chat-header {
   background: linear-gradient(90deg, var(--primary), var(--accent));
   color: #fff;
@@ -121,9 +103,6 @@ body {
   padding: 10px 14px;
   border-radius: 16px;
   margin-bottom: 10px;
-  word-wrap: break-word;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  animation: fadeIn 0.25s ease-in-out;
 }
 
 .msg-sent {
@@ -139,18 +118,12 @@ body {
   border-bottom-left-radius: 5px;
 }
 
-[data-theme="dark"] .msg-received {
-  background: #2a3245;
-  color: #e4e8f0;
-}
-
 /* FOOTER */
 .chat-footer {
   background: var(--card-bg);
   padding: 12px;
   border-top: 1px solid var(--border);
   display: flex;
-  align-items: center;
   gap: 10px;
 }
 
@@ -159,14 +132,6 @@ body {
   border-radius: 20px;
   border: 1px solid var(--border);
   padding: 10px 15px;
-  background: var(--bg);
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.3s;
-}
-
-.chat-footer input:focus {
-  border-color: var(--accent);
 }
 
 .chat-footer button {
@@ -179,44 +144,45 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s;
-}
-
-.chat-footer button:hover {
-  background: var(--primary);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 </style>
 
+@php
+    $autoOpen = $autoOpen ?? false;
+    $jobId = $jobId ?? null;
+    $receiverId = $receiverId ?? null;
+    $receiverName = $receiverName ?? "Select a chat";
+    $receiverAvatar = $receiverAvatar ?? "https://ui-avatars.com/api/?name=User&background=00b3ff&color=fff";
+@endphp
+
 <div class="chat-wrapper">
   <div class="chat-container">
+
     <!-- SIDEBAR -->
     <div class="chat-sidebar">
       <div class="header">Messages</div>
       <div class="list-group list-group-flush" id="chatList">
-        <div class="text-center text-muted py-4">No messages yet</div>
+        <div class="text-center text-muted py-4">Loading...</div>
       </div>
     </div>
 
     <!-- CHAT BOX -->
     <div class="chat-box">
+
       <div class="chat-header">
         <div class="user-info">
-          <img id="chatAvatar" src="https://ui-avatars.com/api/?name=User&background=00b3ff&color=fff">
+          <img id="chatAvatar" src="{{ $receiverAvatar }}">
           <div>
-            <h6 id="chatName" class="mb-0 fw-semibold">Select a chat</h6>
-            <small id="chatStatus" class="opacity-75">Offline</small>
+            <h6 id="chatName" class="mb-0 fw-semibold">{{ $receiverName }}</h6>
+            <small id="chatStatus" class="opacity-75">{{ $autoOpen ? 'online 🟢' : 'Offline' }}</small>
           </div>
         </div>
-        <i class="bi bi-three-dots-vertical"></i>
       </div>
 
       <div class="chat-body" id="chatContent">
-        <div class="text-center text-muted py-5">Select a user to start chatting</div>
+        @if(!$autoOpen)
+          <div class="text-center text-muted py-5">Select a user to start chatting</div>
+        @endif
       </div>
 
       <div class="chat-footer">
@@ -225,92 +191,125 @@ body {
           <button type="submit"><i class="bi bi-send-fill"></i></button>
         </form>
       </div>
+
     </div>
+
   </div>
 </div>
 
-<!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
-let activeJob = null, activeReceiver = null;
 
-// Load chat list
+let activeJob = {{ $jobId ? $jobId : 'null' }};
+let activeReceiver = {{ $receiverId ? $receiverId : 'null' }};
+let autoOpen = {{ $autoOpen ? 'true' : 'false' }};
+
+/* LOAD CHAT LIST */
 function loadChatList() {
-  $.get('/messages/list', function(data) {
-    const list = $('#chatList');
-    list.empty();
-    if (data.length === 0) {
-      list.append('<div class="text-center text-muted py-4">No messages yet</div>');
-      return;
-    }
+    $.get("/messages/list", function(list){
+        $("#chatList").empty();
 
-    data.forEach(chat => {
-      list.append(`
-        <a href="#" class="list-group-item list-group-item-action openChat"
-           data-job="${chat.job_id}"
-           data-receiver="${chat.receiver_id}"
-           data-name="${chat.name}"
-           data-avatar="${chat.avatar}">
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-2">
-              <img src="${chat.avatar}" class="rounded-circle" width="32" height="32">
-              <span>${chat.name}</span>
-            </div>
-            ${chat.unread > 0 ? `<span class="badge bg-danger">${chat.unread}</span>` : ''}
-          </div>
-        </a>
-      `);
+        if(list.length == 0){
+            $("#chatList").html(`<div class="text-center text-muted py-4">No messages yet</div>`);
+            return;
+        }
+
+        list.forEach(c => {
+            $("#chatList").append(`
+                <a href="#" class="list-group-item list-group-item-action openChat"
+                   data-job="${c.job_id}"
+                   data-receiver="${c.receiver_id}"
+                   data-name="${c.name}"
+                   data-avatar="${c.avatar}">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                      <img src="${c.avatar}" width="32" class="rounded-circle">
+                      <span>${c.name}</span>
+                    </div>
+                    ${c.unread > 0 ? `<span class="badge bg-danger">${c.unread}</span>` : ''}
+                  </div>
+                </a>
+            `);
+        });
+
+        if(autoOpen && activeJob && activeReceiver){
+            setTimeout(() => {
+                $(`.openChat[data-job='${activeJob}'][data-receiver='${activeReceiver}']`).click();
+            }, 300);
+        }
     });
-  });
 }
 
-// Load messages
-$(document).on('click', '.openChat', function(e){
-  e.preventDefault();
-  activeJob = $(this).data('job');
-  activeReceiver = $(this).data('receiver');
-  $('#chatName').text($(this).data('name'));
-  $('#chatAvatar').attr('src', $(this).data('avatar'));
-  $('#chatStatus').text('online 🟢');
+/* OPEN CHAT */
+$(document).on("click", ".openChat", function(e){
+    e.preventDefault();
 
-  $.get(`/chat/fetch/${activeJob}/${activeReceiver}`, function(data){
-    const authId = @json(Auth::id());
-    let html = '';
-    data.forEach(msg => {
-      const isSent = msg.sender_id === authId;
-      html += `
-        <div class="d-flex ${isSent ? 'justify-content-end' : 'justify-content-start'}">
-          <div class="msg-bubble ${isSent ? 'msg-sent' : 'msg-received'}">${msg.message}</div>
-        </div>`;
+    activeJob = $(this).data("job");
+    activeReceiver = $(this).data("receiver");
+
+    $("#chatName").text($(this).data("name"));
+    $("#chatAvatar").attr("src", $(this).data("avatar"));
+    $("#chatStatus").text("online 🟢");
+
+    loadMessages(true);
+
+    $.post(`/chat/read/${activeJob}/${activeReceiver}`, {
+        _token: "{{ csrf_token() }}"
+    }, () => loadChatList());
+});
+
+/* LOAD MESSAGES */
+function loadMessages(scroll){
+    if(!activeJob) return;
+
+    $.get(`/chat/fetch/${activeJob}/${activeReceiver}`, function(msgs){
+        let auth = {{ Auth::id() }};
+        let html = "";
+
+        msgs.forEach(m => {
+            html += `
+                <div class="d-flex ${m.sender_id == auth ? 'justify-content-end' : 'justify-content-start'}">
+                    <div class="msg-bubble ${m.sender_id == auth ? 'msg-sent' : 'msg-received'}">${m.message}</div>
+                </div>
+            `;
+        });
+
+        $("#chatContent").html(html);
+
+        if(scroll) $("#chatContent").scrollTop($("#chatContent")[0].scrollHeight);
     });
-    $('#chatContent').html(html).scrollTop($('#chatContent')[0].scrollHeight);
-  });
+}
+
+/* SEND MESSAGE */
+$("#chatForm").on("submit", function(e){
+    e.preventDefault();
+
+    let message = $("#chatMessage").val();
+    if(!activeJob || !activeReceiver) return;
+
+    $.post("/chat/send", {
+        _token: "{{ csrf_token() }}",
+        job_id: activeJob,
+        receiver_id: activeReceiver,
+        message: message
+    }, () => {
+        $("#chatMessage").val("");
+        loadMessages(true);
+        loadChatList();
+    });
 });
 
-// Send message
-$('#chatForm').on('submit', function(e){
-  e.preventDefault();
-  const message = $('#chatMessage').val();
-  if (!activeJob || !activeReceiver) return;
-  $.post('/chat/send', {
-    _token: '{{ csrf_token() }}',
-    job_id: activeJob,
-    receiver_id: activeReceiver,
-    message: message
-  }, function(){
-    $('#chatMessage').val('');
-    $('.openChat[data-job="'+activeJob+'"]').click(); // reload chat
-    loadChatList(); // refresh badge counts
-  });
-});
-
-// Refresh every 5 seconds
+/* AUTO REFRESH */
 setInterval(() => {
-  loadChatList();
-  if (activeJob && activeReceiver) $('.openChat[data-job="'+activeJob+'"]').click();
+    loadChatList();
+    if(activeJob && activeReceiver) loadMessages(false);
 }, 5000);
 
+/* INITIAL LOAD */
 loadChatList();
+if(autoOpen) loadMessages(true);
+
 </script>
+
 @endsection

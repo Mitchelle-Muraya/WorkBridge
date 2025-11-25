@@ -132,14 +132,13 @@
     <input type="text" name="name" placeholder="Full Name" required>
     <input type="email" name="email" placeholder="Email" required>
     <input type="password" name="password" placeholder="Password" required>
-
 @error('password')
-    <div style="color: #ff4d4d; font-size: 0.9rem; margin-top: -5px; text-align:left;">
-        {{ $message }}
-    </div>
+   <small style="color: red;">{{ $message }}</small>
 @enderror
 
+
     <input type="password" name="password_confirmation" placeholder="Confirm Password" required>
+
     <button type="submit">Sign Up</button>
 </form>
 
