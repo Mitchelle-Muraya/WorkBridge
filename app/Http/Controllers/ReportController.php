@@ -6,79 +6,113 @@ use Illuminate\Http\Request;
 use App\Models\Job;
 use App\Models\Application;
 use App\Models\User;
+use App\Models\Worker;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ReportExport;
 
 class ReportController extends Controller
 {
-   public function index(Request $request)
-{
-    // Get optional date filters
-    $start = $request->input('start', now()->subMonth()->toDateString());
-    $end = $request->input('end', now()->toDateString());
+    public function index(Request $request)
+    {
+        // 1️⃣ Get filter values
+        $start = $request->start_date ?? now()->subDays(30)->format('Y-m-d');
+        $end   = $request->end_date   ?? now()->format('Y-m-d');
+        $status = $request->status ?? '';
+        $location = $request->location ?? '';
+        $category = $request->category ?? '';
 
-    // Dashboard stats
-    $totalJobs = \App\Models\Job::count();
-    $totalApplications = \App\Models\Application::count();
-    $totalUsers = \App\Models\User::count();
-    $activeWorkers = \App\Models\Worker::count();
+        // 2️⃣ Build dynamic query
+        $query = Job::query();
+        $query->whereBetween('created_at', [$start, $end]);
 
-    // Job status breakdown
-    $jobStatusData = [
-        'pending' => \App\Models\Job::where('status', 'pending')->count(),
-        'in_progress' => \App\Models\Job::where('status', 'in_progress')->count(),
-        'completed' => \App\Models\Job::where('status', 'completed')->count(),
-    ];
+        if ($status) {
+            $query->where('status', $status);
+        }
 
-    // Application status breakdown
-    $applicationData = [
-        'pending' => \App\Models\Application::where('status', 'pending')->count(),
-        'accepted' => \App\Models\Application::where('status', 'accepted')->count(),
-        'rejected' => \App\Models\Application::where('status', 'rejected')->count(),
-    ];
+        if ($location) {
+            $query->where('location', 'LIKE', "%$location%");
+        }
 
-    // 👇 Add this section
-    $topWorkers = \App\Models\Worker::withAvg('reviews', 'rating')
-        ->orderByDesc('reviews_avg_rating')
-        ->take(5)
-        ->get();
+        if ($category) {
+            $query->where('skills_required', 'LIKE', "%$category%");
+        }
 
-    // Send everything to the view
-    return view('admin.reports.index', compact(
-        'start',
-        'end',
-        'totalJobs',
-        'totalApplications',
-        'totalUsers',
-        'activeWorkers',
-        'jobStatusData',
-        'applicationData',
-        'topWorkers'
-    ));
-}
+        // Filtered jobs
+        $filteredJobs = $query->get();
 
-   public function exportPDF()
-{
-    // 1️⃣ Load jobs from your DB
-    $jobs = Job::all();
+        // 3️⃣ Summary cards (based on filtered jobs)
+        $totalJobs = $filteredJobs->count();
+        $totalApplications = Application::count();
+        $totalUsers = User::count();
+        $activeWorkers = Worker::whereNotNull('skills')->count();
 
-    // 2️⃣ Render the Blade view
-    $html = view('admin.reports.pdf', compact('jobs'))->render();
+        // 4️⃣ Job status breakdown (filtered)
+        $jobStatusData = [
+            'pending' => $query->clone()->where('status', 'pending')->count(),
+            'in_progress' => $query->clone()->where('status', 'in_progress')->count(),
+            'completed' => $query->clone()->where('status', 'completed')->count(),
+        ];
 
-    // 3️⃣ Configure and load Dompdf
-    $options = new Options();
-    $options->set('isHtml5ParserEnabled', true);
-    $options->set('isRemoteEnabled', true);
+        // 5️⃣ Application status breakdown
+        $applicationData = [
+            'pending' => Application::where('status', 'pending')->count(),
+            'approved' => Application::where('status', 'approved')->count(),
+            'rejected' => Application::where('status', 'rejected')->count(),
+        ];
 
-    $dompdf = new Dompdf($options);
-    $dompdf->loadHtml($html);
-    $dompdf->setPaper('A4', 'portrait');
-    $dompdf->render();
+        // 6️⃣ Top workers
+        $topWorkers = Worker::withAvg('reviews', 'rating')
+            ->orderByDesc('reviews_avg_rating')
+            ->take(5)
+            ->get();
 
-    // 4️⃣ Stream the PDF to browser
-    return $dompdf->stream('workbridge_report.pdf', ['Attachment' => false]);
-}
+        // Return everything to view
+        return view('admin.reports.index', compact(
+            'start', 'end', 'status', 'location', 'category',
+            'filteredJobs', 'jobStatusData', 'applicationData',
+            'totalJobs', 'totalApplications', 'totalUsers',
+            'activeWorkers', 'topWorkers'
+        ));
+    }
+
+
+    public function exportPDF(Request $request)
+    {
+        // Re-build filtered query for export
+        $query = Job::query();
+
+        if ($request->start_date && $request->end_date) {
+            $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
+        }
+
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->location) {
+            $query->where('location', 'LIKE', "%{$request->location}%");
+        }
+
+        if ($request->category) {
+            $query->where('skills_required', 'LIKE', "%{$request->category}%");
+        }
+
+        $jobs = $query->get();
+
+        // PDF rendering
+        $html = view('admin.reports.pdf', compact('jobs'))->render();
+
+        $options = new Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        return $dompdf->stream('workbridge_report.pdf', ['Attachment' => false]);
+    }
 }

@@ -14,31 +14,37 @@ class RegisterController extends Controller
      */
     public function create()
     {
-        return view('auth.register'); // no argument expected here
+        return view('auth.register');
     }
 
     /**
      * Handle registration POST
      */
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6|confirmed',
-        ]);
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'password' => [
+            'required',
+            'confirmed',
+            'min:6',
+            'regex:/^[a-z0-9]+$/'
+        ],
+    ], [
+        'password.regex' => 'Password must contain only lowercase letters and numbers.',
+    ]);
 
-        // ✅ Create user (default role = worker)
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role' => 'worker', // default role
-        ]);
+    $user = User::create([
+        'name' => $validated['name'],
+        'email' => $validated['email'],
+        'password' => Hash::make($validated['password']),
+        'role' => 'worker',
+    ]);
 
-        // ✅ Log the user in automatically
-        auth()->login($user);
+    auth()->login($user);
 
-        return redirect()->route('worker.dashboard')->with('success', 'Welcome to WorkBridge!');
-    }
+    return redirect()->route('worker.dashboard')->with('success', 'Welcome to WorkBridge!');
+}
+
 }

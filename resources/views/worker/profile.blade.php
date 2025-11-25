@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css">
 <style>
 /* --------- REALISTIC, PRODUCTION-STYLE FORM --------- */
 body {
@@ -99,15 +100,25 @@ body {
       <!-- Skills -->
       <div class="mb-3">
         <label for="skills" class="form-label">Skills</label>
-        <input type="text" name="skills" id="skills" class="form-control"
-          placeholder="e.g. Plumbing, Carpentry, Masonry" required>
+
+       @php
+$skills = $worker && $worker->skills ? $worker->skills : '';
+@endphp
+
+<input type="text" name="skills" id="skills" class="form-control"
+       value="{{ $skills }}"
+
+       placeholder="e.g. Plumbing, Carpentry, Masonry" required>
+
       </div>
 
       <!-- Experience -->
       <div class="mb-3">
         <label for="experience" class="form-label">Experience</label>
         <input type="text" name="experience" id="experience" class="form-control"
-          placeholder="e.g. 3 years in house maintenance" required>
+       value="{{ $worker->experience ?? '' }}"
+       placeholder="e.g. 3 years in house maintenance" required>
+
       </div>
 
       <!-- Photo Upload -->
@@ -115,7 +126,10 @@ body {
         <label for="photo" class="form-label">Upload Profile Photo</label>
         <input type="file" name="photo" id="photo" class="form-control">
         <div class="photo-preview">
-          <img id="previewImage" src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&background=00b3ff&color=fff" alt="Preview">
+          <img id="previewImage"
+     src="{{ $worker && $worker->photo ? asset('storage/' . $worker->photo) : 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) }}"
+     alt="Preview">
+
           <small class="text-muted">Preview updates automatically</small>
         </div>
       </div>
@@ -126,12 +140,18 @@ body {
         <input type="file" name="resume" id="resume" class="form-control">
       </div>
 
+      @if($worker && $worker->resume)
+    <a href="{{ asset('storage/' . $worker->resume) }}" target="_blank">View Existing Resume</a>
+@endif
+
       <button type="submit" class="btn-save w-100">Save Profile</button>
     </form>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
 <script>
+
 // preview uploaded photo
 document.getElementById('photo').addEventListener('change', e => {
   const file = e.target.files[0];
@@ -139,5 +159,11 @@ document.getElementById('photo').addEventListener('change', e => {
     document.getElementById('previewImage').src = URL.createObjectURL(file);
   }
 });
+let input = document.querySelector('#skills');
+new Tagify(input);
+
+
+
+
 </script>
 @endsection

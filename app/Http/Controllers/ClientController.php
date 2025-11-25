@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 use App\Models\Job;
 use App\Models\Application;
 use App\Models\Client;
+use App\Models\SkillRate;
 
 class ClientController extends Controller
 {
@@ -40,17 +41,18 @@ class ClientController extends Controller
         ->take(5)
         ->get();
 
-        // Load previously saved recommendations
         $recommended = json_decode($client->recommended_workers ?? '[]', true);
-$newApplications = Application::whereHas('job', function ($q) use ($clientId) {
-    $q->where('client_id', $clientId);
-})->where('viewed', false)->count();
+
+        $newApplications = Application::whereHas('job', function ($q) use ($clientId) {
+            $q->where('client_id', $clientId);
+        })
+        ->where('viewed', false)
+        ->count();
 
         return view('dashboard.client', compact(
-    'totalJobs', 'jobsInProgress', 'completedJobs',
-    'applications', 'recommended', 'newApplications'
-));
-
+            'totalJobs', 'jobsInProgress', 'completedJobs',
+            'applications', 'recommended', 'newApplications'
+        ));
     }
 
     /**
@@ -58,35 +60,34 @@ $newApplications = Application::whereHas('job', function ($q) use ($clientId) {
      */
     public function createJob()
     {
-        return view('client.post-job');
+        $rates = SkillRate::all();
+        return view('client.post-job', compact('rates'));
     }
 
     /**
-     * 💾 STORE NEW JOB + AI RECOMMENDATIONS
+     * 💾 STORE NEW JOB
      */
     public function storeJob(Request $request)
     {
         $user = Auth::user();
 
-        // Ensure client record exists
         $client = Client::firstOrCreate(
             ['user_id' => $user->id],
             ['company' => $user->name . ' Company', 'photo' => null]
         );
 
-        // Switch mode
         if ($user->mode !== 'client') {
             $user->update(['mode' => 'client']);
         }
 
-        // Skills
+        // Skills handling
         $skills = $request->input('skills_required', []);
         if ($request->filled('other_skill')) {
-            $skills[] = $request->input('other_skill');
+            $skills[] = $request->other_skill;
         }
         $skillsString = implode(', ', $skills);
 
-        // Validate job inputs
+        // Validate inputs
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
@@ -100,11 +101,10 @@ $newApplications = Application::whereHas('job', function ($q) use ($clientId) {
         $validated['user_id'] = $user->id;
         $validated['status'] = 'pending';
 
-        // Save job
         $job = Job::create($validated);
 
         /**
-         * 🔥 GET AI WORKER RECOMMENDATIONS (FLASK API)
+         * 🔥 GET AI WORKER RECOMMENDATIONS
          */
         try {
             $response = Http::post('http://127.0.0.1:10000/recommend_workers', [
@@ -113,14 +113,12 @@ $newApplications = Application::whereHas('job', function ($q) use ($clientId) {
 
             if ($response->successful()) {
                 $data = $response->json();
-                \Log::info('FLASK RESPONSE:', $data);
 
                 $recommended = $data['recommended_workers'] ?? [];
 
-                // Convert into usable format
                 $workers = collect($recommended)->map(function ($w) {
                     return [
-                        'user_id' => $w['user_id'] ?? null, // REQUIRED for filtering
+                        'user_id' => $w['user_id'] ?? null,
                         'name' => $w['worker_name'] ?? $w['name'] ?? 'Unnamed Worker',
                         'skills' => $w['skills'] ?? 'N/A',
                         'photo' => $w['photo'] ?? 'https://ui-avatars.com/api/?name=' . urlencode($w['worker_name'] ?? 'Worker'),
@@ -129,21 +127,14 @@ $newApplications = Application::whereHas('job', function ($q) use ($clientId) {
                     ];
                 });
 
-                /**
-                 * 🚫 FIX: DO NOT RECOMMEND LOGGED-IN USER
-                 */
-                $workers = $workers->filter(function ($w) use ($user) {
-                    return $w['user_id'] !== $user->id;
-                })->values();
+                // Prevent recommending the client themselves
+                $workers = $workers->reject(fn($w) => $w['user_id'] == $user->id)->values();
 
-                // Save to DB
                 $client->recommended_workers = json_encode($workers);
                 $client->save();
-            } else {
-                \Log::warning('Flask error: ' . $response->body());
             }
         } catch (\Exception $e) {
-            \Log::error('Recommendation failed: ' . $e->getMessage());
+            \Log::error('FLASK ERROR: ' . $e->getMessage());
         }
 
         return redirect()->route('client.dashboard')
@@ -166,17 +157,9 @@ $newApplications = Application::whereHas('job', function ($q) use ($clientId) {
         return view('client.my-jobs', compact('jobs'));
     }
 
-    /**
-     * ✏ EDIT JOB
-     */
     public function editJob($id)
     {
         $client = Client::where('user_id', Auth::id())->first();
-
-        if (!$client) {
-            return redirect()->route('client.my-jobs')
-                ->with('error', 'Client profile not found.');
-        }
 
         $job = Job::where('id', $id)
             ->where('client_id', $client->id)
@@ -187,8 +170,10 @@ $newApplications = Application::whereHas('job', function ($q) use ($clientId) {
 
     public function updateJob(Request $request, $id)
     {
+        $client = Client::where('user_id', Auth::id())->first();
+
         $job = Job::where('id', $id)
-            ->where('client_id', Auth::user()->client->id)
+            ->where('client_id', $client->id)
             ->firstOrFail();
 
         $validated = $request->validate([
@@ -207,8 +192,10 @@ $newApplications = Application::whereHas('job', function ($q) use ($clientId) {
 
     public function deleteJob($id)
     {
+        $client = Client::where('user_id', Auth::id())->first();
+
         $job = Job::where('id', $id)
-            ->where('client_id', Auth::user()->client->id)
+            ->where('client_id', $client->id)
             ->firstOrFail();
 
         $job->delete();
@@ -217,56 +204,27 @@ $newApplications = Application::whereHas('job', function ($q) use ($clientId) {
             ->with('success', 'Job deleted successfully.');
     }
 
-    /**
-     * 📬 APPLICATIONS
-     */
-    public function messages()
-    {
-        return view('messages.index');
-    }
-
-    public function reviews()
-    {
-        $clientId = auth()->id();
-
-        $reviews = \App\Models\Review::where('client_id', $clientId)
-            ->with(['worker.user', 'job'])
-            ->latest()
-            ->get();
-
-        return view('client.reviews', compact('reviews'));
-    }
-
     public function viewApplications()
     {
         $client = Client::where('user_id', Auth::id())->first();
 
-        if (!$client) {
-            return redirect()->route('dashboard')
-                ->with('error', 'Client profile not found.');
-        }
-
         $applications = Application::whereHas('job', fn($q) =>
             $q->where('client_id', $client->id)
         )->with(['user', 'job'])->latest()->get();
-          // 🔥 Mark all as viewed when client opens the applications page
-    Application::whereHas('job', fn($q) =>
-        $q->where('client_id', $client->id)
-    )->update(['viewed' => true]);
 
-
+        // Mark all as viewed
+        Application::whereHas('job', fn($q) =>
+            $q->where('client_id', $client->id)
+        )->update(['viewed' => true]);
 
         return view('client.applications', compact('applications'));
     }
 
-    public function applications()
-    {
-        return $this->viewApplications();
-    }
-
     public function completedJobs()
     {
-        $completedJobs = Job::where('client_id', auth()->id())
+        $client = Client::where('user_id', auth()->id())->first();
+
+        $completedJobs = Job::where('client_id', $client->id)
             ->where('status', 'completed')
             ->with('worker.user')
             ->get();

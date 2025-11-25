@@ -1,26 +1,68 @@
+@php
+    $status = $status ?? '';
+    $location = $location ?? '';
+    $category = $category ?? '';
+@endphp
+
 @extends('layouts.admin')
 
 
 @section('content')
 <div class="container-fluid px-4 py-4">
-  <h2 class="fw-bold text-primary mb-4">
-    <i class="bi bi-bar-chart-line me-2"></i> Admin Reports Dashboard
-  </h2>
-<div class="d-flex justify-content-between align-items-center mb-4">
- @isset($start)
-<form method="GET" class="d-flex gap-2">
-    <input type="date" name="start_date" value="{{ $start ?? '' }}" class="form-control form-control-sm">
-    <input type="date" name="end_date" value="{{ $end ?? '' }}" class="form-control form-control-sm">
-    <button class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Filter</button>
-</form>
-@endisset
 
+    <h2 class="fw-bold text-primary mb-4">
+        <i class="bi bi-bar-chart-line me-2"></i> Admin Reports Dashboard
+    </h2>
 
-  <div class="btn-group">
-    <a href="{{ route('admin.reports.pdf') }}" class="btn btn-danger btn-sm"><i class="bi bi-file-earmark-pdf"></i> Export PDF</a>
-    <a href="{{ route('admin.reports.excel') }}" class="btn btn-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
-  </div>
-</div>
+    <!-- EXPORT BUTTONS -->
+    <div class="d-flex justify-content-end mb-3">
+        <div class="btn-group">
+            <a href="{{ route('admin.reports.pdf', request()->all()) }}" class="btn btn-danger btn-sm">
+                <i class="bi bi-file-earmark-pdf"></i> Export PDF
+            </a>
+            <a href="{{ route('admin.reports.excel', request()->all()) }}" class="btn btn-success btn-sm">
+                <i class="bi bi-file-earmark-excel"></i> Export Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- FILTER FORM -->
+    <form method="GET" class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label class="form-label">Start Date</label>
+            <input type="date" name="start_date" class="form-control" value="{{ $start }}">
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">End Date</label>
+            <input type="date" name="end_date" class="form-control" value="{{ $end }}">
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Job Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                <option value="pending" {{ $status=='pending'?'selected':'' }}>Pending</option>
+                <option value="in_progress" {{ $status=='in_progress'?'selected':'' }}>In Progress</option>
+                <option value="completed" {{ $status=='completed'?'selected':'' }}>Completed</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Location</label>
+            <input type="text" name="location" class="form-control" value="{{ $location }}" placeholder="e.g Nairobi">
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Category / Skill</label>
+            <input type="text" name="category" class="form-control" value="{{ $category }}" placeholder="e.g Plumbing">
+        </div>
+
+        <div class="col-md-12">
+            <button class="btn btn-primary mt-2"><i class="bi bi-funnel"></i> Apply Filters</button>
+        </div>
+    </form>
+
 
   <!-- ================= SUMMARY CARDS ================= -->
   <!-- ================= SUMMARY CARDS (Dark Mode Enhanced) ================= -->
@@ -66,21 +108,84 @@
 
 </div>
 
+{{-- FILTERED JOB RESULTS TABLE --}}
+@if(isset($filteredJobs) && $filteredJobs->count() > 0)
 
-  <!-- ================= CHARTS ================= -->
-  <div class="row g-4">
-    <div class="col-md-6">
-      <div class="card shadow-sm border-0 rounded-4 p-4">
-        <h6 class="fw-semibold text-primary mb-3">
-          <i class="bi bi-briefcase-fill me-1"></i> Job Status Overview
-        </h6>
-        <canvas id="jobStatusChart" height="250"></canvas>
-      </div>
+<div class="card shadow-sm mt-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0 fw-bold">Filtered Jobs ({{ $filteredJobs->count() }})</h5>
     </div>
 
-    <div class="card p-4">
-  <h6 class="text-primary fw-bold mb-3">Applications Breakdown</h6>
-  <canvas id="applicationsChart" height="120"></canvas>
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Client</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach($filteredJobs as $job)
+                <tr>
+                    <td>{{ $job->id }}</td>
+                    <td>{{ $job->title }}</td>
+                    <td>{{ $job->client->name ?? 'Unknown' }}</td>
+                    <td>{{ $job->location }}</td>
+                    <td>{{ ucfirst($job->status) }}</td>
+                    <td>{{ $job->created_at->format('Y-m-d') }}</td>
+
+                    <td>
+                        <a
+                           href="{{ route('admin.jobs.view', $job->id) }}"
+                           class="text-dark"
+                           title="View Job">
+                           <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@else
+<div class="text-center text-muted mt-4">
+    No jobs match the selected filters.
+</div>
+@endif
+
+
+  <!-- ================= CHARTS ================= -->
+  <!-- ================= CHARTS (SIDE BY SIDE) ================= -->
+<div class="row g-4 mt-4">
+
+    <!-- LEFT: Job Status Overview -->
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 rounded-4 p-4 h-100">
+            <h6 class="fw-semibold text-primary mb-3">
+                <i class="bi bi-pie-chart-fill me-1"></i> Job Status Overview
+            </h6>
+            <canvas id="jobStatusChart" height="260"></canvas>
+        </div>
+    </div>
+
+    <!-- RIGHT: Applications Breakdown -->
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 rounded-4 p-4 h-100">
+            <h6 class="fw-semibold text-primary mb-3">
+                <i class="bi bi-clipboard-data me-1"></i> Applications Breakdown
+            </h6>
+            <canvas id="applicationsChart" height="260"></canvas>
+        </div>
+    </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -111,50 +216,6 @@ new Chart(document.getElementById('applicationsChart'), {
 </script>
 
 
-  <div class="row g-4 mt-4">
-    <div class="col-md-7">
-      <div class="card shadow-sm border-0 rounded-4 p-4">
-        <h6 class="fw-semibold text-primary mb-3">
-          <i class="bi bi-calendar-week me-1"></i> Monthly Jobs Trend
-        </h6>
-        <canvas id="monthlyJobsChart" height="260"></canvas>
-      </div>
-    </div>
-
-    <div class="col-md-5">
-      <div class="card shadow-sm border-0 rounded-4 p-4">
-        <h6 class="fw-semibold text-primary mb-3">
-          <i class="bi bi-star-fill me-1"></i> Top Rated Workers
-        </h6>
-        @if($topWorkers->isEmpty())
-          <p class="text-muted">No ratings yet.</p>
-        @else
-          <table class="table table-sm align-middle">
-            <thead>
-              <tr>
-                <th>Worker</th>
-                <th>Avg Rating</th>
-                <th>Reviews</th>
-              </tr>
-            </thead>
-            <tbody>
-              @foreach($topWorkers as $worker)
-                <tr>
-                  <td>{{ $worker->worker->name ?? 'Unknown' }}</td>
-                  <td>
-                    <span class="badge bg-success">
-                      <i class="bi bi-star-fill"></i> {{ number_format($worker->avg_rating, 1) }}
-                    </span>
-                  </td>
-                  <td>{{ $worker->total_reviews }}</td>
-                </tr>
-              @endforeach
-            </tbody>
-          </table>
-        @endif
-      </div>
-    </div>
-  </div>
 
   <footer class="text-center mt-5 text-muted">
     <small>© {{ date('Y') }} WorkBridge — Smart Job Matching Analytics Dashboard</small>

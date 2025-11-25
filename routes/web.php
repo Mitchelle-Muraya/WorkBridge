@@ -96,10 +96,10 @@ Route::get('/client/applications', [ClientController::class, 'viewApplications']
 
 
 // Worker Profile
-Route::middleware('auth')->group(function () {
-    Route::get('/worker/profile', [ProfileController::class, 'showForm'])->name('worker.profile');
-    Route::post('/worker/profile', [ProfileController::class, 'saveProfile'])->name('worker.profile.save');
-});
+// Worker Profile (ONLY THESE 2)
+Route::get('/worker/profile', [WorkerController::class, 'profile'])->name('worker.profile');
+Route::post('/worker/profile/save', [WorkerController::class, 'saveProfile'])->name('worker.profile.save');
+
 
 
 
@@ -248,6 +248,8 @@ Route::post('/worker/review', [ReviewController::class, 'storeWorkerReview'])
     Route::post('/jobs/approve/{id}', [AdminController::class, 'approveJob'])->name('jobs.approve');
     Route::post('/jobs/complete/{id}', [AdminController::class, 'completeJob'])->name('jobs.complete');
     Route::delete('/jobs/delete/{id}', [AdminController::class, 'deleteJob'])->name('jobs.delete');
+Route::post('/jobs/reject/{id}', [AdminController::class, 'rejectJob'])->name('jobs.reject');
+Route::get('/jobs/view/{id}', [AdminController::class, 'viewJob'])->name('jobs.view');
 
     // Settings view
     Route::get('/settings', function () {

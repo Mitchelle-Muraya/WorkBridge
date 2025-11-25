@@ -18,12 +18,12 @@ class ApplicationController extends Controller
     {
         $userId = Auth::id();
 
-        // ⛔ Prevent duplicate applications
+        // Prevent duplicate applications
         if (Application::where('user_id', $userId)->where('job_id', $jobId)->exists()) {
             return back()->with('info', 'You have already applied for this job.');
         }
 
-        // Create the application
+        // Save application
         $application = Application::create([
             'user_id' => $userId,
             'job_id' => $jobId,
@@ -31,11 +31,12 @@ class ApplicationController extends Controller
             'status' => 'pending',
         ]);
 
-        // Notify the job owner (client)
+        // Notify the job owner
         $job = Job::find($jobId);
+
         if ($job && $job->client_id) {
             Notification::create([
-                'user_id' => $job->client->user_id,  // client receives notification
+                'user_id' => $job->client_id,  // FIXED: client is just user_id
                 'title' => 'New Job Application',
                 'message' => Auth::user()->name . ' applied for your job "' . $job->title . '".'
             ]);
@@ -43,8 +44,6 @@ class ApplicationController extends Controller
 
         return back()->with('success', 'Application submitted successfully!');
     }
-
-
 
     /**
      * 🟧 CLIENT ACCEPTS OR REJECTS APPLICATION
@@ -54,26 +53,19 @@ class ApplicationController extends Controller
         $application = Application::findOrFail($id);
         $newStatus = $request->status;
 
-        // Update application status
+        // Update application
         $application->update(['status' => $newStatus]);
 
-        // ----------------------------------------------
-        // 🟢 If ACCEPTED
-        // ----------------------------------------------
+        // =============== ACCEPTED ===============
         if ($newStatus === 'accepted') {
 
-            // Link job to chosen worker + change job status
+            // Assign worker + update job
             $application->job->update([
                 'worker_id' => $application->user_id,
                 'status' => 'in_progress',
             ]);
 
-            // 🔴 Add red-dot notification to worker
-            $application->user->update([
-                'application_notification' => 1
-            ]);
-
-            // Push notification to worker
+            // Notify worker
             Notification::create([
                 'user_id' => $application->user_id,
                 'title' => 'Application Accepted',
@@ -81,13 +73,8 @@ class ApplicationController extends Controller
             ]);
         }
 
-        // ----------------------------------------------
-        // 🔴 If REJECTED
-        // ----------------------------------------------
+        // =============== REJECTED ===============
         if ($newStatus === 'rejected') {
-
-            // Notify worker
-            $application->user->update(['application_notification' => 1]);
 
             Notification::create([
                 'user_id' => $application->user_id,
@@ -98,6 +85,4 @@ class ApplicationController extends Controller
 
         return back()->with('success', "Application {$newStatus} successfully.");
     }
-
 }
-

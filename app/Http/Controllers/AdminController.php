@@ -7,136 +7,235 @@ use App\Models\User;
 use App\Models\Job;
 use App\Models\Application;
 use App\Models\Worker;
+use App\Models\Review;
 
 class AdminController extends Controller
 {
     /**
-     * Display the main admin dashboard.
+     * MAIN ADMIN DASHBOARD
      */
     public function index()
     {
-        // Summary stats for quick overview
-        $totalUsers = User::count();
-        $totalJobs = Job::count();
-        $totalApplications = Application::count();
-
-        return view('admin.dashboard', compact('totalUsers', 'totalJobs', 'totalApplications'));
+        return view('admin.dashboard', [
+            'totalUsers'        => User::count(),
+            'totalJobs'         => Job::count(),
+            'totalApplications' => Application::count(),
+        ]);
     }
+
 
     /**
-     * Display the admin reports page with charts and filters.
+     * REPORTS DASHBOARD (FILTERABLE)
      */
-   public function reports(Request $request)
-{
-    // 1️⃣ Handle date filters (optional)
-    $start = $request->get('start');
-    $end = $request->get('end');
-
-    if (!$start) $start = now()->subDays(30)->format('Y-m-d');
-    if (!$end) $end = now()->format('Y-m-d');
-
-  // 2️⃣ Job statistics (for pie chart)
-$jobStatusData = [
-    'pending' => \App\Models\Job::where('status', 'pending')->count(),
-    'in_progress' => \App\Models\Job::where('status', 'in_progress')->count(),
-    'completed' => \App\Models\Job::where('status', 'completed')->count(),
-];
-
-// 3️⃣ Application statistics (for bar chart)
-$applicationData = [
-    'pending' => \App\Models\Application::where('status', 'pending')->count(),
-    'approved' => \App\Models\Application::where('status', 'approved')->count(),
-    'rejected' => \App\Models\Application::where('status', 'rejected')->count(),
-];
+    public function reports(Request $request)
+    {
+        // -------------------------------------------------------
+        // 1️⃣ GET FILTER INPUTS
+        // -------------------------------------------------------
+        $start     = $request->start_date ?? now()->subDays(30)->format('Y-m-d');
+        $end       = $request->end_date   ?? now()->format('Y-m-d');
+        $status    = $request->status     ?? '';
+        $location  = $request->location   ?? '';
+        $category  = $request->category   ?? ''; // skills_required column
 
 
-    // 4️⃣ Summary counts
-    $totalJobs = \App\Models\Job::count();
-    $totalApplications = \App\Models\Application::count();
-    $totalUsers = \App\Models\User::count();
-    $activeWorkers = \App\Models\Worker::whereNotNull('skills')->count();
-// 6️⃣ Top 5 highest-rated workers
-$topWorkers = \App\Models\Review::select('worker_id')
-    ->selectRaw('AVG(rating) as avg_rating, COUNT(*) as total_reviews')
-    ->groupBy('worker_id')
-    ->orderByDesc('avg_rating')
-    ->limit(5)
-    ->with('worker.user') // assuming Worker belongsTo User
-    ->get();
+        // -------------------------------------------------------
+        // 2️⃣ BUILD DYNAMIC QUERY
+        // -------------------------------------------------------
+        $query = Job::query()
+            ->whereBetween('created_at', [$start, $end]);
 
-    // 5️⃣ Send all variables to view
-    return view('admin.reports.index', compact(
-        'start',
-        'end',
-        'jobStatusData',
-        'applicationData',
-        'totalJobs',
-        'totalApplications',
-        'totalUsers',
-        'activeWorkers',
-        'topWorkers'
-    ));
-}
- public function manageUsers()
-{
-    // Fetch all registered users
-    $users = \App\Models\User::all();
+        if (!empty($status)) {
+            $query->where('status', $status);
+        }
 
-    // (Optional) If you want to show some user stats
-    $userStats = [
-        'worker' => \App\Models\User::where('role', 'worker')->count(),
-        'client' => \App\Models\User::where('role', 'client')->count(),
-    ];
+        if (!empty($location)) {
+            $query->where('location', 'LIKE', "%{$location}%");
+        }
 
-    // Return users view with both variables
-    return view('admin.users', compact('users', 'userStats'));
-}
+        if (!empty($category)) {
+            $query->where('skills_required', 'LIKE', "%{$category}%");
+        }
+
+        $filteredJobs = $query->get();
 
 
-    // 💼 Manage Jobs
+        // -------------------------------------------------------
+        // 3️⃣ SUMMARY CARDS (FILTERED)
+        // -------------------------------------------------------
+        $totalJobs         = $filteredJobs->count();
+        $totalApplications = Application::count();
+        $totalUsers        = User::count();
+        $activeWorkers     = Worker::whereNotNull('skills')->count();
+
+
+        // -------------------------------------------------------
+        // 4️⃣ JOB STATUS CHART DATA (FILTERED)
+        // -------------------------------------------------------
+        $jobStatusData = [
+            'pending'     => $query->clone()->where('status', 'pending')->count(),
+            'in_progress' => $query->clone()->where('status', 'in_progress')->count(),
+            'completed'   => $query->clone()->where('status', 'completed')->count(),
+        ];
+
+
+        // -------------------------------------------------------
+        // 5️⃣ APPLICATION CHART (GLOBAL OR FILTERED)
+        // -------------------------------------------------------
+        $applicationData = [
+            'pending'  => Application::where('status', 'pending')->count(),
+            'approved' => Application::where('status', 'approved')->count(),
+            'rejected' => Application::where('status', 'rejected')->count(),
+        ];
+
+
+        // -------------------------------------------------------
+        // 6️⃣ TOP WORKERS
+        // -------------------------------------------------------
+        $topWorkers = Review::select('worker_id')
+            ->selectRaw('AVG(rating) as avg_rating, COUNT(*) as total_reviews')
+            ->groupBy('worker_id')
+            ->orderByDesc('avg_rating')
+            ->limit(5)
+            ->with('worker.user')
+            ->get();
+
+
+        // -------------------------------------------------------
+        // 7️⃣ RETURN TO VIEW
+        // -------------------------------------------------------
+        return view('admin.reports.index', [
+            'start'             => $start,
+            'end'               => $end,
+            'status'            => $status,
+            'location'          => $location,
+            'category'          => $category,
+            'filteredJobs'      => $filteredJobs,
+            'jobStatusData'     => $jobStatusData,
+            'applicationData'   => $applicationData,
+            'totalJobs'         => $totalJobs,
+            'totalApplications' => $totalApplications,
+            'totalUsers'        => $totalUsers,
+            'activeWorkers'     => $activeWorkers,
+            'topWorkers'        => $topWorkers,
+        ]);
+    }
+
+
+    /**
+     * MANAGE USERS PAGE
+     */
+    public function manageUsers()
+    {
+        return view('admin.users', [
+            'users' => User::all(),
+            'userStats' => [
+                'worker' => User::where('role', 'worker')->count(),
+                'client' => User::where('role', 'client')->count(),
+            ]
+        ]);
+    }
+
+
+    /**
+     * MANAGE JOBS PAGE
+     */
     public function manageJobs()
     {
-        $jobs = Job::with('client')->get(); // load jobs with their client relationship
+        $jobs = Job::with('client')->get();
         return view('admin.jobs', compact('jobs'));
     }
-// ❌ Delete Job
+
+
+    /**
+     * DELETE JOB
+     */
     public function deleteJob($id)
     {
-        $job = Job::findOrFail($id);
-        $job->delete();
-
-        return back()->with('success', 'Job deleted successfully!');
+        Job::findOrFail($id)->delete();
+        return back()->with('success', 'Job deleted successfully.');
     }
 
-    // ✅ Activate User
+
+    /**
+     * ACTIVATE USER
+     */
     public function activateUser($id)
-    {
-        $user = User::findOrFail($id);
-        $user->status = 'active';
-        $user->save();
+{
+    $user = User::findOrFail($id);
+    $user->status = 'active';
+    $user->save();
 
-        return back()->with('success', 'User activated successfully!');
-    }
+    return redirect()->back()->with('success', 'User activated successfully');
+}
 
-    // 🚫 Deactivate User
-    public function deactivateUser($id)
-    {
-        $user = User::findOrFail($id);
-        $user->status = 'inactive';
-        $user->save();
+public function deactivateUser($id)
+{
+    $user = User::findOrFail($id);
+    $user->status = 'inactive';
+    $user->save();
 
-        return back()->with('success', 'User deactivated successfully!');
-    }
+    return redirect()->back()->with('success', 'User deactivated successfully');
+}
 
-    // ❌ Delete User
+    /**
+     * DELETE USER
+     */
     public function deleteUser($id)
     {
-        $user = User::findOrFail($id);
-        $user->delete();
-
-        return back()->with('success', 'User deleted successfully!');
+        User::findOrFail($id)->delete();
+        return back()->with('success', 'User deleted successfully.');
     }
 
+// APPROVE JOB
+public function approveJob($id)
+{
+    $job = Job::findOrFail($id);
 
+    if ($job->status !== 'pending') {
+        return back()->with('error', 'Job cannot be approved.');
+    }
 
+    $job->status = 'approved';
+    $job->save();
+
+    return back()->with('success', 'Job approved successfully.');
+}
+
+// REJECT JOB
+public function rejectJob($id)
+{
+    $job = Job::findOrFail($id);
+
+    if ($job->status !== 'pending') {
+        return back()->with('error', 'Job cannot be rejected.');
+    }
+
+    $job->status = 'rejected';
+    $job->save();
+
+    return back()->with('success', 'Job rejected.');
+}
+
+// MARK COMPLETED BY ADMIN
+public function completeJob($id)
+{
+    $job = Job::findOrFail($id);
+
+    if ($job->status !== 'in_progress') {
+        return back()->with('error', 'Only in-progress jobs can be completed.');
+    }
+
+    $job->status = 'completed';
+    $job->save();
+
+    return back()->with('success', 'Job marked as completed.');
+}
+
+// VIEW FULL JOB DETAILS
+public function viewJob($id)
+{
+    $job = Job::with(['client', 'applications.user'])->findOrFail($id);
+    return view('admin.view-job', compact('job'));
+}
 }
