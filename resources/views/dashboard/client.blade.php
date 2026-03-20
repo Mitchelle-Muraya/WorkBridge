@@ -462,7 +462,10 @@ input:checked + .slider:before {
     </div>
   </div>
 <!-- 🌟 AI-Recommended Workers Section -->
-@if(!empty($recommended) && count($recommended) > 0)
+@if(isset($workers) && count($workers) > 0)
+
+
+
   <div class="mt-5 p-4 rounded-4 shadow-sm"
        style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff;">
     <h4 class="fw-bold mb-3">
@@ -472,8 +475,9 @@ input:checked + .slider:before {
       Based on your job’s required skills, here are potential matches suggested by AI.
     </p>
 
+
     <div class="row">
-      @foreach($recommended as $worker)
+      @foreach($workers as $worker)
         <div class="col-md-6 col-lg-4 mb-4">
           <div class="card border-0 shadow h-100 rounded-4 overflow-hidden">
             <div class="card-body text-dark bg-light">

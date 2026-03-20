@@ -184,6 +184,13 @@ Route::delete('/dashboard/client/job/{id}', [ClientController::class, 'deleteJob
 
 });
 
+Route::get('/test-ai', function () {
+    $client = \App\Models\Client::where('user_id', auth()->id())->first();
+
+    $recommended = json_decode($client->recommended_workers ?? '[]', true);
+
+    return view('test-ai', ['recommended' => $recommended]);
+});
 
 /*
 |--------------------------------------------------------------------------

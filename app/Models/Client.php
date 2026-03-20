@@ -10,6 +10,11 @@ class Client extends Model
         'user_id',
         'company',
         'photo',
+        'recommended_workers', // ← ADD THIS
+    ];
+
+    protected $casts = [
+        'recommended_workers' => 'array', // ← JSON AUTO CONVERT
     ];
 
     public function user()
